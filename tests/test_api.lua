@@ -38,9 +38,9 @@ local WindowManager = require("WindowManager")
 local WindowStack = require("WindowStack")
 local SystemWindow = require("SystemWindow")
 
-assert(WindowManager.VERSION == "1.0.0")
-assert(WindowStack.VERSION == "1.0.0")
-assert(SystemWindow.VERSION == "1.0.0")
+assert(WindowManager.VERSION == "1.1.0")
+assert(WindowStack.VERSION == "1.1.0")
+assert(SystemWindow.VERSION == "1.1.0")
 
 assert(SystemWindow.configure({
     width = 800,
@@ -64,11 +64,15 @@ local window = WindowManager.new({
     height = 300,
     title = "Configured",
     draggable = true,
+    resizable = true,
+    resize = { minWidth = 300, minHeight = 200 },
     contentWidth = 2000,
     contentHeight = 1500,
     minZoom = 0.5,
     maxZoom = 4,
     scrollbar = {
+        horizontal = true,
+        vertical = true,
         minThumbSize = 50,
         pageStep = 0.5,
         autoHide = true,
@@ -88,6 +92,7 @@ local window = WindowManager.new({
 assert(#scrollEvents == 0 and #zoomEvents == 0,
     "construction must not emit change callbacks")
 assert(window.title == "Configured" and window.isDraggable)
+assert(window.isResizable and window.minWindowWidth == 300)
 assert(window.verticalScrollbarHeight >= 50 and window.horizontalScrollbarWidthScaled >= 50)
 
 window.scrollX, window.scrollY = 100, 100
@@ -123,5 +128,8 @@ assert(stackDepth == 0, "draw errors must restore the graphics stack")
 
 assert(not pcall(function() window:setZoomLimits(2, 1) end))
 assert(not pcall(function() window:setScrollbarOptions({ color = {2, 0, 0} }) end))
+assert(not pcall(function() window:setInputOptions({ zoomModifier = "invalid" }) end))
+assert(not pcall(function() SystemWindow.configure({ minwidth = 0 }) end))
+assert(window:getState().version == "1.1.0")
 
 print("Public API tests passed")

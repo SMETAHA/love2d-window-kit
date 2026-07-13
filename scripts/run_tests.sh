@@ -24,3 +24,4 @@ done
 "$LUA_BIN" tests/test_examples_smoke.lua themed-scrollbars
 "$LUA_BIN" tests/test_examples_smoke.lua state-callbacks
 "$LUA_BIN" tests/test_examples_smoke.lua large-map-culling
+"$LUA_BIN" tests/test_examples_smoke.lua navigation-lab

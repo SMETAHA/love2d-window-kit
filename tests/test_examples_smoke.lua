@@ -7,7 +7,8 @@ local flags = {
     ["multi-window-dashboard"] = "--example=multi-window-dashboard",
     ["themed-scrollbars"] = "--example=themed-scrollbars",
     ["state-callbacks"] = "--example=state-callbacks",
-    ["large-map-culling"] = "--example=large-map-culling"
+    ["large-map-culling"] = "--example=large-map-culling",
+    ["navigation-lab"] = "--example=navigation-lab"
 }
 assert(flags[mode], "unknown example mode")
 

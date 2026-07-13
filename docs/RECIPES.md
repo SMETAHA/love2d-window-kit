@@ -71,3 +71,64 @@ love . --mobile-test
 ```
 
 Source: [`mobile_test.lua`](../examples/mobile_test.lua).
+
+## 8. Smooth camera targets and kinetic navigation
+
+Enable inertia for direct manipulation, use pinch zoom on touch devices, and move to known content targets with easing. `ensureVisible` is useful for selected objects, tutorial highlights, and keyboard focus.
+
+```bash
+love . --example=navigation-lab
+```
+
+Source: [`navigation_lab.lua`](../examples/navigation_lab.lua).
+
+```lua
+viewport:centerOn(target.x, target.y, {
+    duration = 0.4,
+    easing = "inOutQuad"
+})
+
+viewport:ensureVisible(target.x, target.y, target.w, target.h, {
+    padding = 48,
+    duration = 0.25
+})
+```
+
+## 9. Resizable editor panel
+
+Resize is opt-in, so existing floating windows keep their 1.0 behavior. Define sensible limits and let `WindowStack:resize` keep the panel on-screen after an orientation or system-window change.
+
+```lua
+local inspector = WindowManager.new({
+    floating = true,
+    x = 80, y = 60,
+    width = 620, height = 440,
+    title = "Inspector",
+    draggable = true,
+    resizable = true,
+    resize = {
+        border = 10,
+        minWidth = 360,
+        minHeight = 260,
+        maxWidth = 1000
+    }
+})
+```
+
+## 10. Modal confirmation window
+
+Give stack entries stable IDs when they must be found or restored later. A visible, enabled modal entry blocks pointer and keyboard routing to every entry below it.
+
+```lua
+stack:add(confirmWindow, {
+    id = "delete-confirmation",
+    layer = 1000,
+    modal = true,
+    draw = drawConfirmation
+})
+
+-- Close and unblock the stack.
+stack:setModal(confirmWindow, false)
+stack:setVisible(confirmWindow, false)
+stack:focusTop()
+```

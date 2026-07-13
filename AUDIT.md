@@ -2,7 +2,20 @@
 
 ## Статус
 
-P0, P1 и P2 закрыты в версии `1.0.0`. Исходный двухфайловый прототип преобразован в шаблон с разделёнными viewport, стеком окон, публичным API, тестами, CI и документацией без удаления совместимых методов.
+P0, P1 и P2 закрыты. В версии `1.1.0` шаблон дополнительно получил программную навигацию, инерцию, pinch zoom, resize floating-окон, modal routing и сохранение состояния stack без удаления совместимых методов.
+
+## Расширение 1.1
+
+- Плавная и мгновенная навигация: `scrollTo`, `scrollBy`, `zoomTo`, `centerOn`,
+  `ensureVisible`, отмена и callback завершения.
+- Геометрия viewport: прямое и обратное преобразование координат, visible bounds,
+  scroll limits, hit-test и проверка видимости content rect.
+- Опциональная инерция, двухпальцевый zoom, input policy и независимое отображение
+  горизонтального/вертикального scrollbar.
+- Floating resize с восемью направлениями, ограничениями размера и экрана.
+- Stable IDs, modal boundary, focus cycling, send-to-back, clear и state round-trip
+  в `WindowStack`.
+- Новые layout callbacks и runnable-сценарий `navigation-lab`.
 
 ## P0 — исправлено
 
@@ -28,12 +41,12 @@ P0, P1 и P2 закрыты в версии `1.0.0`. Исходный двухф
 
 ## Проверки
 
-- `test_window_manager.lua` — геометрия, zoom, drag, scrollbar, resize.
-- `test_window_stack.lua` — порядок, focus, capture, visibility, removal.
-- `test_api.lua` — API 1.0, validation, callbacks, безопасный draw.
+- `test_window_manager.lua` — геометрия, navigation, inertia, pinch, scrollbar, resize.
+- `test_window_stack.lua` — порядок, focus, modal capture, state, visibility, removal.
+- `test_api.lua` — API 1.1, validation, callbacks, безопасный draw.
 - `test_mobile_hidpi.lua` — DPI 2×, touch delta, orientation и cancel.
 - `test_main_smoke.lua` — полный жизненный цикл showcase.
-- `test_examples_smoke.lua` — все восемь отдельных сценариев.
+- `test_examples_smoke.lua` — все девять отдельных сценариев.
 - `.github/workflows/ci.yml` — реальный LÖVE 11.5 smoke и `.love` artifact.
 
 ## Остаточные внешние риски

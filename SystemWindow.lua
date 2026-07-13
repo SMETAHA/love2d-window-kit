@@ -1,5 +1,5 @@
 local SystemWindow = {
-    VERSION = "1.0.0"
+    VERSION = "1.1.0"
 }
 
 function SystemWindow.configure(options)
@@ -10,6 +10,8 @@ function SystemWindow.configure(options)
     local height = options.height or love.graphics.getHeight()
     assert(type(width) == "number" and width > 0, "width must be greater than zero")
     assert(type(height) == "number" and height > 0, "height must be greater than zero")
+    assert(options.title == nil or type(options.title) == "string",
+        "title must be a string")
     if options.vsync ~= nil then
         assert(options.vsync == -1 or options.vsync == 0 or options.vsync == 1,
             "vsync must be -1, 0 or 1")
@@ -20,6 +22,20 @@ function SystemWindow.configure(options)
     end
     assert(options.msaa == nil or (type(options.msaa) == "number" and options.msaa >= 0),
         "msaa must be non-negative")
+    assert(options.minwidth == nil
+        or (type(options.minwidth) == "number" and options.minwidth > 0),
+        "minwidth must be greater than zero")
+    assert(options.minheight == nil
+        or (type(options.minheight) == "number" and options.minheight > 0),
+        "minheight must be greater than zero")
+
+    local booleanOptions = {
+        "fullscreen", "resizable", "borderless", "centered", "highdpi", "usedpiscale"
+    }
+    for _, name in ipairs(booleanOptions) do
+        assert(options[name] == nil or type(options[name]) == "boolean",
+            name .. " must be a boolean")
+    end
 
     local flags = {
         fullscreen = options.fullscreen == true,

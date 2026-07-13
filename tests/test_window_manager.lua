@@ -1,7 +1,8 @@
 package.path = "./?.lua;" .. package.path
 
 local mouseX, mouseY = 0, 0
-local ctrlDown = false
+local time = 0
+local keysDown = {}
 local graphicsStack = 0
 
 love = {
@@ -26,7 +27,10 @@ love = {
         getPosition = function() return mouseX, mouseY end
     },
     keyboard = {
-        isDown = function() return ctrlDown end
+        isDown = function(key) return keysDown[key] == true end
+    },
+    timer = {
+        getTime = function() return time end
     }
 }
 
@@ -91,5 +95,95 @@ window:touchpressed("touch", 100, 100, 0, 0, 1)
 window:cancelInput()
 assert(not window:touchmoved("touch", 110, 100, 10, 0, 1),
     "cancelInput must release touches")
+
+-- Geometry helpers are exact inverses and expose content-space bounds.
+window:setZoom(2)
+window:scrollTo(100, 150)
+local screenX, screenY = window:contentToScreen(180, 230)
+local contentX, contentY = window:screenToContent(screenX, screenY)
+assertApprox(contentX, 180, "contentToScreen inverse X")
+assertApprox(contentY, 230, "contentToScreen inverse Y")
+local visibleW, visibleH = window:getViewportSize()
+assertApprox(visibleW, 250, "viewport width")
+assertApprox(visibleH, 138, "viewport height")
+local left, top, right, bottom = window:getVisibleBounds()
+assertApprox(right - left, visibleW, "visible bounds width")
+assertApprox(bottom - top, visibleH, "visible bounds height")
+assert(window:isContentRectVisible(120, 170, 10, 10, true))
+assert(not window:isContentRectVisible(900, 700, 10, 10))
+
+-- Programmatic navigation supports immediate helpers and deterministic animation.
+window:centerOn(500, 400)
+assertApprox(window.scrollX, 375, "centerOn X")
+assertApprox(window.scrollY, 331, "centerOn Y")
+window:ensureVisible(950, 750, 20, 20, { padding = 10 })
+assert(window:isContentRectVisible(950, 750, 20, 20, true))
+
+local navigationComplete = 0
+window:setOnNavigationComplete(function(source, reason)
+    assert(source == window and reason == "animated-test")
+    navigationComplete = navigationComplete + 1
+end)
+window:scrollTo(100, 120, {
+    duration = 1,
+    easing = "linear",
+    reason = "animated-test"
+})
+assert(window:isNavigating())
+window:update(0.5)
+assert(window:isNavigating())
+window:update(0.5)
+assert(not window:isNavigating() and navigationComplete == 1)
+assertApprox(window.scrollX, 100, "animated scroll X")
+assertApprox(window.scrollY, 120, "animated scroll Y")
+
+-- Inertia is opt-in and remains clamped to the content limits.
+window:setInertia({ enabled = true, friction = 6, minVelocity = 0 })
+window.velocityX, window.velocityY = 200, 100
+window:update(0.1)
+assert(window.scrollX > 100 and window.scrollY > 120, "inertia must advance scroll")
+window:scrollTo(100, 120)
+assert(window.velocityX == 0 and window.velocityY == 0,
+    "explicit navigation must cancel inertia")
+
+-- Two captured touches pinch around their midpoint.
+window:setZoom(1)
+window:scrollTo(100, 100)
+assert(window:touchpressed("pinch-a", 100, 100, 0, 0, 1))
+assert(window:touchpressed("pinch-b", 200, 100, 0, 0, 1))
+time = time + 0.016
+assert(window:touchmoved("pinch-b", 300, 100, 100, 0, 1))
+assertApprox(window.zoom, 2, "pinch zoom")
+window:touchreleased("pinch-a", 100, 100, 0, 0, 1)
+window:touchreleased("pinch-b", 300, 100, 0, 0, 1)
+
+-- Floating windows can opt into bounded edge/corner resizing.
+local moved, resized = 0, 0
+local resizable = newFloating()
+resizable:setCallbacks({
+    onMove = function() moved = moved + 1 end,
+    onResize = function() resized = resized + 1 end
+})
+resizable:setResizable(true, {
+    border = 10,
+    minWidth = 240,
+    minHeight = 180,
+    maxWidth = 700,
+    maxHeight = 600
+})
+assert(resizable:hitTest(499, 299) == "resize-se")
+assert(resizable:mousepressed(499, 299, 1))
+assert(resizable:mousemoved(650, 450, 151, 151))
+assert(resizable.w > 500 and resizable.h > 300 and resized > 0)
+assert(resizable:mousereleased(650, 450, 1))
+resizable:setPosition(20, 30)
+assert(moved > 0)
+
+-- Input policy prevents disabled axes and unknown keys from being consumed.
+resizable:setInputOptions({ horizontal = false })
+assert(not resizable:keypressed("left"))
+assert(not resizable:keypressed("unmapped"))
+resizable:setInputOptions({ horizontal = true })
+assert(resizable:keypressed("right"))
 
 print("WindowManager tests passed")

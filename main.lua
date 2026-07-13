@@ -9,7 +9,8 @@ local exampleModules = {
     ["multi-window-dashboard"] = "examples.multi_window_dashboard",
     ["themed-scrollbars"] = "examples.themed_scrollbars",
     ["state-callbacks"] = "examples.state_callbacks",
-    ["large-map-culling"] = "examples.large_map_culling"
+    ["large-map-culling"] = "examples.large_map_culling",
+    ["navigation-lab"] = "examples.navigation_lab"
 }
 
 for _, value in ipairs(arg or {}) do
