@@ -1,4 +1,4 @@
-# API 1.1.0
+# API 1.2.0
 
 ## WindowManager
 
@@ -21,6 +21,8 @@
 | `alignSmallContent` | boolean | Центрирование малого контента |
 | `scrollbar` | table | Настройки scrollbar |
 | `input` | table | Политика wheel, keyboard, touch, осей и zoom-модификатора |
+| `trackpad` | table/boolean | Плавная прокрутка precision touchpad (`true` включает её) |
+| `touchscreen` | table | Пороги жестов, tap-действия и touch resize |
 | `inertia` | table/boolean | Опциональная кинетическая прокрутка |
 | `theme` | table | Цвета рамки и title bar |
 | `callbacks` | table | Scroll, zoom, layout и navigation callbacks |
@@ -45,6 +47,32 @@
 | `shiftWheelHorizontal` | `true` | Shift + вертикальное колесо прокручивает по горизонтали |
 | `zoomModifier` | `"ctrl"` | `ctrl`, `alt`, `shift`, `meta` или `none` |
 | `zoomStep` | `0.1` | Шаг zoom для колеса и клавиатуры |
+| `trackpad` | — | Вложенные настройки precision touchpad |
+| `touchscreen` | — | Вложенные настройки жестов touchscreen |
+
+### Настройки touchpad
+
+`smooth`, `sensitivity`, `invertX`, `invertY`, `friction`, `maxVelocity`, `zoomMode`, `zoomSensitivity`.
+
+`smooth = true` сохраняет дробные wheel delta и добавляет momentum с независимым от FPS затуханием. `zoomMode` принимает `exponential` или `linear`; экспоненциальный zoom применяется только в smooth-режиме. LÖVE сообщает колесо мыши и touchpad ноутбука через один `love.wheelmoved`, поэтому библиотека не может надёжно различить эти устройства и настройка действует на оба. По умолчанию smooth выключен, а поведение 1.1 сохранено.
+
+### Настройки touchscreen
+
+| Параметр | По умолчанию | Назначение |
+| --- | --- | --- |
+| `pan` / `pinchZoom` | `true` | Pan одним пальцем / zoom двумя пальцами |
+| `panThreshold` | `3` | Игнорировать случайное движение в logical px |
+| `pinchSensitivity` | `1` | Множитель отношения pinch |
+| `pinchMinDistance` | `12` | Минимальная дистанция для начала pinch |
+| `twoFingerPan` | `true` | Перемещать viewport за центром pinch |
+| `doubleTap` | `false` | Включить zoom двойным tap относительно точки касания |
+| `doubleTapInterval` / `doubleTapDistance` | `0.32` / `36` | Временной и пространственный пределы double tap |
+| `doubleTapZoom` / `doubleTapResetZoom` | `2` / `1` | Целевые значения zoom |
+| `doubleTapDuration` | `0.2` | Длительность zoom-анимации |
+| `longPressDelay` | `0.55` | Задержка перед `onLongPress` |
+| `resize` / `resizeBorder` | `true` / `24` | Touch-зона изменения размера за углы |
+
+Title bar можно перетаскивать пальцем у любого draggable floating-окна. Touch resize углов требует `resizable = true`; одиночные края намеренно не перехватываются, чтобы сохранить полезную область контента и scrollbar. После отпускания одного пальца из pinch второй продолжает pan без скачка координат.
 
 ### Inertia options
 
@@ -62,11 +90,16 @@ onZoom(oldZoom, zoom, viewport, reason)
 onMove(x, y, oldX, oldY, viewport, reason)
 onResize(width, height, oldWidth, oldHeight, viewport, reason)
 onNavigationComplete(viewport, reason)
+onTap(screenX, screenY, contentX, contentY, viewport, pressure)
+onDoubleTap(screenX, screenY, contentX, contentY, viewport, pressure)
+onLongPress(screenX, screenY, contentX, contentY, viewport, pressure)
 ```
+
+`onTap` откладывается до завершения интервала double tap. `onDoubleTap` вызывается сразу после второго касания; верните `false`, чтобы отменить встроенный zoom. Long press включается регистрацией `onLongPress`.
 
 Каждое изменение сообщает координаты после окончательного ограничения. При zoom относительно курсора `onZoom` и `onScroll` видят уже финальное состояние. Анимация сообщает промежуточные изменения и один раз вызывает `onNavigationComplete`. Во время конструктора callbacks не вызываются.
 
-Типичные `reason`: `wheel`, `wheel-zoom`, `content-drag`, `touch-drag`, `pinch`, `inertia`, `vertical-drag`, `horizontal-drag`, `window-drag`, `window-resize`, `scroll-to`, `zoom-to`, `ensure-visible`, `keyboard`, `resize`, `state`.
+Типичные `reason`: `wheel`, `trackpad`, `wheel-zoom`, `content-drag`, `touch-drag`, `pinch`, `double-tap`, `inertia`, `vertical-drag`, `horizontal-drag`, `window-drag`, `touch-window-drag`, `window-resize`, `touch-window-resize`, `scroll-to`, `zoom-to`, `ensure-visible`, `keyboard`, `resize`, `state`.
 
 ### Основные методы
 
@@ -79,12 +112,12 @@ onNavigationComplete(viewport, reason)
 - `setZoom(value, anchorX?, anchorY?, reason?)`.
 - `setZoomLimits(min, max)` / `zoomIn(step?)` / `zoomOut(step?)`.
 - `setScrollbarOptions(options)` / `setTheme(theme)`.
-- `setInputOptions(options)` / `setInertia(options)`.
+- `setInputOptions(options)` / `setTrackpadOptions(options)` / `setTouchOptions(options)` / `setInertia(options)`.
 - `setCallbacks(callbacks)` и отдельные методы `setOn…`.
 - `scrollTo(x, y, options?)` / `scrollBy(dx, dy, options?)`.
 - `zoomTo(value, anchorX?, anchorY?, options?)`.
 - `centerOn(contentX, contentY, options?)` / `ensureVisible(x, y, w, h, options?)`.
-- `isNavigating()` / `cancelNavigation()`.
+- `isNavigating()` / `cancelNavigation()` / `isTrackpadScrolling()`.
 - `screenToContent(x, y)` / `contentToScreen(x, y)`.
 - `getViewportSize()` / `getVisibleBounds()` / `getScrollLimits()`.
 - `isContentRectVisible(x, y, w, h, fully?)` / `hitTest(x, y)`.
@@ -131,7 +164,7 @@ stack:add(window, options)
 - `getState()` / `setState(state)` для записей со стабильными ID.
 - `update`, `draw`, `resize`, `cancelInput`.
 
-Передавайте ему `mousepressed`, `mousereleased`, `mousemoved`, `wheelmoved`, touch callbacks, keyboard callbacks, `textinput` и `textedited`. Mouse-жест принадлежит одному окну до release; каждый touch ID захватывается независимо.
+Передавайте ему `mousepressed`, `mousereleased`, `mousemoved`, `wheelmoved`, touch callbacks, keyboard callbacks, `textinput` и `textedited`. Mouse-жест принадлежит одному окну до release; каждый touch ID захватывается независимо. Если приложение передаёт native touch callbacks, пропускайте mouse-события с `istouch == true`: LÖVE так помечает mouse-события, созданные касанием, и обработка обоих путей продублирует жест.
 
 Состояние stack содержит только записи со стабильными ID. Если окно реализует `getState` и `setState`, его состояние вкладывается и восстанавливается автоматически. Активация modal-записи отменяет captures ниже modal boundary.
 

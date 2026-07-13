@@ -1,4 +1,4 @@
-# API 1.1.0
+# API 1.2.0
 
 ## WindowManager
 
@@ -21,6 +21,8 @@
 | `alignSmallContent` | boolean | Center content smaller than the viewport |
 | `scrollbar` | table | Scrollbar configuration |
 | `input` | table | Wheel, keyboard, touch, axes, and zoom-modifier policy |
+| `trackpad` | table/boolean | Precision wheel/trackpad smoothing (`true` enables it) |
+| `touchscreen` | table | Touch gesture thresholds, tap actions, and touch resize |
 | `inertia` | table/boolean | Opt-in kinetic scrolling |
 | `theme` | table | Frame and title-bar colors |
 | `callbacks` | table | Scroll, zoom, layout, and navigation callbacks |
@@ -45,6 +47,32 @@ A color is `{r, g, b, a}` with components in the `0..1` range. `pageStep` is the
 | `shiftWheelHorizontal` | `true` | Convert Shift + vertical wheel into horizontal scrolling |
 | `zoomModifier` | `"ctrl"` | `ctrl`, `alt`, `shift`, `meta`, or `none` |
 | `zoomStep` | `0.1` | Wheel and keyboard zoom increment |
+| `trackpad` | — | Nested precision-trackpad options |
+| `touchscreen` | — | Nested touchscreen gesture options |
+
+### Precision trackpad options
+
+`smooth`, `sensitivity`, `invertX`, `invertY`, `friction`, `maxVelocity`, `zoomMode`, and `zoomSensitivity`.
+
+Set `smooth = true` to preserve fractional wheel deltas and apply momentum with frame-rate-independent damping. `zoomMode` is `exponential` or `linear`; exponential zoom is used only while smooth mode is enabled. Because LÖVE reports mouse wheels and laptop touchpads through the same `love.wheelmoved` callback, this policy necessarily affects both devices. Smooth mode is off by default, so 1.1 wheel behavior is unchanged.
+
+### Touchscreen options
+
+| Option | Default | Purpose |
+| --- | --- | --- |
+| `pan` / `pinchZoom` | `true` | Enable one-finger pan / two-finger zoom |
+| `panThreshold` | `3` | Ignore accidental movement in logical pixels |
+| `pinchSensitivity` | `1` | Scale the pinch ratio |
+| `pinchMinDistance` | `12` | Minimum distance before a pinch pair starts |
+| `twoFingerPan` | `true` | Move the viewport with the pinch midpoint |
+| `doubleTap` | `false` | Opt into anchored double-tap zoom |
+| `doubleTapInterval` / `doubleTapDistance` | `0.32` / `36` | Time and distance limits for a double tap |
+| `doubleTapZoom` / `doubleTapResetZoom` | `2` / `1` | Zoom targets toggled by double tap |
+| `doubleTapDuration` | `0.2` | Zoom animation duration |
+| `longPressDelay` | `0.55` | Delay before `onLongPress` |
+| `resize` / `resizeBorder` | `true` / `24` | Touch-sized floating-window corner resize |
+
+Touch title-bar dragging is available whenever the floating window is draggable. Corner resize requires `resizable = true`; single-edge touch resize is deliberately avoided so content and scrollbars keep usable space. When one finger leaves a pinch, the remaining finger can continue panning without a coordinate jump.
 
 ### Inertia options
 
@@ -62,11 +90,16 @@ onZoom(oldZoom, zoom, viewport, reason)
 onMove(x, y, oldX, oldY, viewport, reason)
 onResize(width, height, oldWidth, oldHeight, viewport, reason)
 onNavigationComplete(viewport, reason)
+onTap(screenX, screenY, contentX, contentY, viewport, pressure)
+onDoubleTap(screenX, screenY, contentX, contentY, viewport, pressure)
+onLongPress(screenX, screenY, contentX, contentY, viewport, pressure)
 ```
+
+`onTap` is delayed until the configured double-tap interval expires. `onDoubleTap` runs immediately on the second tap; return `false` to suppress the built-in zoom. Long press is enabled by registering `onLongPress`.
 
 Each state mutation reports coordinates after they have been clamped. Cursor-anchored zoom therefore reports the final scroll and zoom state. An animation emits changes as the view advances, then calls `onNavigationComplete` once. Construction does not emit callbacks.
 
-Common reasons include `wheel`, `wheel-zoom`, `content-drag`, `touch-drag`, `pinch`, `inertia`, `vertical-drag`, `horizontal-drag`, `window-drag`, `window-resize`, `scroll-to`, `zoom-to`, `ensure-visible`, `keyboard`, `resize`, and `state`.
+Common reasons include `wheel`, `trackpad`, `wheel-zoom`, `content-drag`, `touch-drag`, `pinch`, `double-tap`, `inertia`, `vertical-drag`, `horizontal-drag`, `window-drag`, `touch-window-drag`, `window-resize`, `touch-window-resize`, `scroll-to`, `zoom-to`, `ensure-visible`, `keyboard`, `resize`, and `state`.
 
 ### Main methods
 
@@ -79,12 +112,12 @@ Common reasons include `wheel`, `wheel-zoom`, `content-drag`, `touch-drag`, `pin
 - `setZoom(value, anchorX?, anchorY?, reason?)`.
 - `setZoomLimits(min, max)` / `zoomIn(step?)` / `zoomOut(step?)`.
 - `setScrollbarOptions(options)` / `setTheme(theme)`.
-- `setInputOptions(options)` / `setInertia(options)`.
+- `setInputOptions(options)` / `setTrackpadOptions(options)` / `setTouchOptions(options)` / `setInertia(options)`.
 - `setCallbacks(callbacks)` and the individual `setOn…` methods.
 - `scrollTo(x, y, options?)` / `scrollBy(dx, dy, options?)`.
 - `zoomTo(value, anchorX?, anchorY?, options?)`.
 - `centerOn(contentX, contentY, options?)` / `ensureVisible(x, y, w, h, options?)`.
-- `isNavigating()` / `cancelNavigation()`.
+- `isNavigating()` / `cancelNavigation()` / `isTrackpadScrolling()`.
 - `screenToContent(x, y)` / `contentToScreen(x, y)`.
 - `getViewportSize()` / `getVisibleBounds()` / `getScrollLimits()`.
 - `isContentRectVisible(x, y, w, h, fully?)` / `hitTest(x, y)`.
@@ -131,7 +164,7 @@ stack:add(window, options)
 - `getState()` / `setState(state)` for entries that have IDs.
 - `update`, `draw`, `resize`, `cancelInput`.
 
-Forward mouse, wheel, touch, keyboard, `textinput`, and `textedited` callbacks to the stack. A mouse gesture stays with one window until release; each touch ID is captured independently.
+Forward mouse, wheel, touch, keyboard, `textinput`, and `textedited` callbacks to the stack. A mouse gesture stays with one window until release; each touch ID is captured independently. If native touch callbacks are forwarded, skip mouse events with `istouch == true`; LÖVE marks touch-originated mouse events this way and processing both paths would duplicate the gesture.
 
 Stack state contains only entries with stable IDs. If a managed window implements `getState` and `setState`, its own state is nested and restored automatically. Activating a modal entry cancels captures held below the modal boundary.
 

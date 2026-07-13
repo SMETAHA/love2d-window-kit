@@ -40,7 +40,8 @@ local function drawContent(scrollX, scrollY, visibleWidth, visibleHeight)
     end
 
     love.graphics.setColor(0.7, 0.78, 0.9)
-    love.graphics.print("Drag and release for inertia. Pinch on touch devices.", left + 18, top + 18)
+    love.graphics.print("Trackpad: smooth scroll. Touch: pan, pinch, double tap, hold.",
+        left + 18, top + 18)
 end
 
 function love.load()
@@ -89,7 +90,21 @@ function love.load()
         },
         input = {
             pinchZoom = true,
-            shiftWheelHorizontal = true
+            shiftWheelHorizontal = true,
+            trackpad = {
+                smooth = true,
+                sensitivity = 1,
+                friction = 14,
+                zoomMode = "exponential"
+            },
+            touchscreen = {
+                panThreshold = 4,
+                twoFingerPan = true,
+                doubleTap = true,
+                doubleTapZoom = 2,
+                longPressDelay = 0.55,
+                resize = true
+            }
         },
         scrollbar = {
             autoHide = true,
@@ -104,6 +119,15 @@ function love.load()
         callbacks = {
             onNavigationComplete = function(_, reason)
                 status = reason == "landmark" and "Landmark centered" or "Navigation complete"
+            end,
+            onTap = function(_, _, contentX, contentY)
+                status = string.format("Tap at %.0f, %.0f", contentX, contentY)
+            end,
+            onDoubleTap = function()
+                status = "Double tap zoom"
+            end,
+            onLongPress = function(_, _, contentX, contentY)
+                status = string.format("Long press at %.0f, %.0f", contentX, contentY)
             end
         }
     })
@@ -144,7 +168,7 @@ Support.bind(function() return stack end, {
     draw = function()
         local width, height = love.graphics.getDimensions()
         love.graphics.setColor(0.72, 0.78, 0.9)
-        love.graphics.print("[1–3] landmarks   [Home] reset zoom   [F] ensure visible   " .. status,
+        love.graphics.print("[1–3] targets  [Home] reset  [F] reveal  Touch: tap / hold / pinch   " .. status,
             18, height - 26)
         love.graphics.setColor(1, 1, 1)
         love.graphics.print(string.format("zoom %.2f", viewport.zoom), width - 110, 18)

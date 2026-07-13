@@ -4,15 +4,15 @@ const examples = [
     {
         id: "navigation-lab",
         name: "Navigation lab",
-        note: "New in 1.1",
+        note: "New gestures in 1.2",
         description:
-            "Animated targets, kinetic drag, pinch zoom and constrained corner resizing in one focused example.",
+            "Smooth precision-trackpad scrolling, pinch + two-finger pan, double-tap zoom, long press and touch-sized window controls.",
         controls: [
-            "Drag + release",
+            "Trackpad scroll",
             "Ctrl + wheel",
-            "1–3 targets",
-            "Home reset",
-            "Corner resize",
+            "Pinch + pan",
+            "Double tap",
+            "Long press",
         ],
         command: "love . --example=navigation-lab",
         source: "examples/navigation_lab.lua",

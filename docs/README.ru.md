@@ -1,14 +1,15 @@
-# LÖVE Window Kit 1.1.0
+# LÖVE Window Kit 1.2.0
 
-Лёгкий набор для создания прокручиваемых и масштабируемых viewport в LÖVE2D: анимированная навигация, инерция, pinch zoom, изменяемые размеры окон, модальный фокус и независимый multi-touch.
+Лёгкий набор для создания прокручиваемых и масштабируемых viewport в LÖVE2D: плавный precision-touchpad, touchscreen-жесты, анимированная навигация, изменяемые размеры окон и модальный фокус.
 
 [← Главная страница](../README.md) · [API](API.md) · [Mobile checklist](MOBILE_TEST.md)
 
 ## Возможности
 
 - колесо, клавиатура, drag-to-scroll, touch и опциональная инерция;
+- дробная плавная прокрутка и экспоненциальный zoom для touchpad ноутбука;
 - масштабирование относительно точки под курсором;
-- pinch zoom и плавные `scrollTo`, `zoomTo`, `centerOn`, `ensureVisible`;
+- pinch + two-finger pan, double tap, long press и плавные navigation helpers;
 - плавающие перетаскиваемые и resizable-окна;
 - z-order, слои, стабильные ID, active и modal-окна;
 - mouse capture до release и отдельный capture каждого touch ID;
@@ -41,7 +42,7 @@ love . --minimal
 | `love . --example=themed-scrollbars` | Подробная настройка оформления |
 | `love . --example=state-callbacks` | Состояние и callbacks |
 | `love . --example=large-map-culling` | Оптимизированная большая карта |
-| `love . --example=navigation-lab` | Инерция, pinch, плавные цели и resize |
+| `love . --example=navigation-lab` | Touchpad, pinch + pan, tap/hold и touch resize |
 | `love . --mobile-test` | Touch, DPI и ориентация |
 
 Исходники всех сценариев находятся в [`examples/`](../examples/). Полный конфигурационный контракт описан в [`docs/API.md`](API.md).

@@ -3,7 +3,7 @@
 
 local WindowManager = {}
 WindowManager.__index = WindowManager
-WindowManager.VERSION = "1.1.0"
+WindowManager.VERSION = "1.2.0"
 
 local function copyColor(color)
     return { color[1], color[2], color[3], color[4] == nil and 1 or color[4] }
@@ -116,6 +116,36 @@ function WindowManager.new(options)
     self.zoomModifier = "ctrl"
     self.zoomStep = 0.1
 
+    -- Precision wheel / laptop touchpad behavior. LÖVE exposes both through
+    -- wheelmoved, so this mode deliberately works with either device.
+    self.trackpadSmooth = false
+    self.trackpadSensitivity = 1
+    self.trackpadInvertX = false
+    self.trackpadInvertY = false
+    self.trackpadFriction = 14
+    self.trackpadMaxVelocity = 3000
+    self.trackpadZoomMode = "exponential"
+    self.trackpadZoomSensitivity = 0.12
+    self.trackpadVelocityX = 0
+    self.trackpadVelocityY = 0
+
+    -- Touchscreen gestures
+    self.touchPanThreshold = 3
+    self.touchPinchSensitivity = 1
+    self.touchPinchMinDistance = 12
+    self.touchTwoFingerPan = true
+    self.touchDoubleTapZoomEnabled = false
+    self.touchDoubleTapInterval = 0.32
+    self.touchDoubleTapDistance = 36
+    self.touchDoubleTapZoom = 2
+    self.touchDoubleTapResetZoom = 1
+    self.touchDoubleTapDuration = 0.2
+    self.touchLongPressDelay = 0.55
+    self.touchResize = true
+    self.touchResizeBorder = 24
+    self.touchCounter = 0
+    self.lastTap = nil
+
     -- Optional kinetic scrolling. Disabled by default for 1.0 compatibility.
     self.inertiaEnabled = false
     self.inertiaFriction = 8
@@ -180,6 +210,9 @@ function WindowManager.new(options)
     self.onMove = nil
     self.onResize = nil
     self.onNavigationComplete = nil
+    self.onTap = nil
+    self.onDoubleTap = nil
+    self.onLongPress = nil
 
     -- Preferred floating size is used to restore layout after orientation changes.
     self.preferredW = self.w
@@ -226,6 +259,8 @@ function WindowManager:_stopMotion()
     self.navigation = nil
     self.velocityX = 0
     self.velocityY = 0
+    self.trackpadVelocityX = 0
+    self.trackpadVelocityY = 0
 end
 
 function WindowManager:_windowSizeLimits()
@@ -258,12 +293,12 @@ function WindowManager:isPointInsideWindow(mx, my)
         and my >= self.y and my <= (self.y + self.h))
 end
 
-function WindowManager:_getResizeEdges(mx, my)
+function WindowManager:_getResizeEdges(mx, my, borderOverride)
     if not self.isFloating or not self.isResizable or not self:isPointInsideWindow(mx, my) then
         return nil
     end
     local localX, localY = mx - self.x, my - self.y
-    local border = math.min(self.resizeBorder, self.w / 2, self.h / 2)
+    local border = math.min(borderOverride or self.resizeBorder, self.w / 2, self.h / 2)
     local horizontal = localX <= border and "w" or (localX >= self.w - border and "e" or "")
     local vertical = localY <= border and "n" or (localY >= self.h - border and "s" or "")
     -- Keep single-axis scrollbar tracks usable. Corners remain resize handles.
@@ -277,6 +312,38 @@ function WindowManager:_getResizeEdges(mx, my)
     end
     local edges = vertical .. horizontal
     return #edges > 0 and edges or nil
+end
+
+function WindowManager:_applyWindowResize(edges, startX, startY, startW, startH,
+                                          pointerStartX, pointerStartY, pointerX, pointerY,
+                                          reason)
+    local oldX, oldY, oldW, oldH = self:_layoutSnapshot()
+    local deltaX, deltaY = pointerX - pointerStartX, pointerY - pointerStartY
+    local left, top = startX, startY
+    local right, bottom = startX + startW, startY + startH
+    local minW, minH, maxW, maxH = self:_windowSizeLimits()
+    local screenW, screenH = love.graphics.getDimensions()
+
+    if edges:find("w", 1, true) then
+        left = clamp(startX + deltaX, math.max(0, right - maxW), right - minW)
+    elseif edges:find("e", 1, true) then
+        right = clamp(right + deltaX, left + minW, math.min(screenW, left + maxW))
+    end
+    if edges:find("n", 1, true) then
+        top = clamp(startY + deltaY, math.max(0, bottom - maxH), bottom - minH)
+    elseif edges:find("s", 1, true) then
+        bottom = clamp(bottom + deltaY, top + minH, math.min(screenH, top + maxH))
+    end
+
+    self.x, self.y, self.w, self.h = left, top, right - left, bottom - top
+    self.windowWidth, self.windowHeight = self.w, self.h
+    self.preferredW, self.preferredH = self.w, self.h
+    local oldScrollX, oldScrollY, oldZoom = self:_snapshot()
+    self:limitScroll()
+    self:_showScrollbars()
+    self:_emitChanges(oldScrollX, oldScrollY, oldZoom, reason or "window-resize")
+    self:_emitLayoutChanges(oldX, oldY, oldW, oldH, reason or "window-resize")
+    return true
 end
 
 function WindowManager:hitTest(mx, my)
@@ -528,6 +595,90 @@ function WindowManager:setInputOptions(options)
             "zoomStep must be greater than zero")
         self.zoomStep = options.zoomStep
     end
+    if options.trackpad ~= nil then self:setTrackpadOptions(options.trackpad) end
+    if options.touchscreen ~= nil then self:setTouchOptions(options.touchscreen) end
+    return self
+end
+
+function WindowManager:setTrackpadOptions(options)
+    if type(options) == "boolean" then options = { smooth = options } end
+    options = options or {}
+    assert(type(options) == "table", "trackpad options must be a table or boolean")
+
+    local booleans = {
+        smooth = "trackpadSmooth",
+        invertX = "trackpadInvertX",
+        invertY = "trackpadInvertY"
+    }
+    for optionName, fieldName in pairs(booleans) do
+        if options[optionName] ~= nil then self[fieldName] = not not options[optionName] end
+    end
+    local positive = {
+        sensitivity = "trackpadSensitivity",
+        friction = "trackpadFriction",
+        maxVelocity = "trackpadMaxVelocity",
+        zoomSensitivity = "trackpadZoomSensitivity"
+    }
+    for optionName, fieldName in pairs(positive) do
+        if options[optionName] ~= nil then
+            assert(type(options[optionName]) == "number" and options[optionName] > 0,
+                "trackpad " .. optionName .. " must be greater than zero")
+            self[fieldName] = options[optionName]
+        end
+    end
+    if options.zoomMode ~= nil then
+        assert(options.zoomMode == "linear" or options.zoomMode == "exponential",
+            "trackpad zoomMode must be 'linear' or 'exponential'")
+        self.trackpadZoomMode = options.zoomMode
+    end
+    if not self.trackpadSmooth then
+        self.trackpadVelocityX, self.trackpadVelocityY = 0, 0
+    end
+    return self
+end
+
+function WindowManager:setTouchOptions(options)
+    options = options or {}
+    assert(type(options) == "table", "touchscreen options must be a table")
+
+    local booleans = {
+        pan = "touchScroll",
+        pinchZoom = "pinchToZoom",
+        twoFingerPan = "touchTwoFingerPan",
+        doubleTap = "touchDoubleTapZoomEnabled",
+        resize = "touchResize"
+    }
+    for optionName, fieldName in pairs(booleans) do
+        if options[optionName] ~= nil then self[fieldName] = not not options[optionName] end
+    end
+    local nonNegative = {
+        panThreshold = "touchPanThreshold",
+        doubleTapDistance = "touchDoubleTapDistance",
+        doubleTapDuration = "touchDoubleTapDuration",
+        longPressDelay = "touchLongPressDelay"
+    }
+    for optionName, fieldName in pairs(nonNegative) do
+        if options[optionName] ~= nil then
+            assert(type(options[optionName]) == "number" and options[optionName] >= 0,
+                "touchscreen " .. optionName .. " must be non-negative")
+            self[fieldName] = options[optionName]
+        end
+    end
+    local positive = {
+        pinchSensitivity = "touchPinchSensitivity",
+        pinchMinDistance = "touchPinchMinDistance",
+        doubleTapInterval = "touchDoubleTapInterval",
+        doubleTapZoom = "touchDoubleTapZoom",
+        doubleTapResetZoom = "touchDoubleTapResetZoom",
+        resizeBorder = "touchResizeBorder"
+    }
+    for optionName, fieldName in pairs(positive) do
+        if options[optionName] ~= nil then
+            assert(type(options[optionName]) == "number" and options[optionName] > 0,
+                "touchscreen " .. optionName .. " must be greater than zero")
+            self[fieldName] = options[optionName]
+        end
+    end
     return self
 end
 
@@ -580,6 +731,12 @@ function WindowManager:setCallbacks(callbacks)
     assert(callbacks.onNavigationComplete == nil
         or type(callbacks.onNavigationComplete) == "function",
         "onNavigationComplete must be a function")
+    assert(callbacks.onTap == nil or type(callbacks.onTap) == "function",
+        "onTap must be a function")
+    assert(callbacks.onDoubleTap == nil or type(callbacks.onDoubleTap) == "function",
+        "onDoubleTap must be a function")
+    assert(callbacks.onLongPress == nil or type(callbacks.onLongPress) == "function",
+        "onLongPress must be a function")
     if callbacks.onScroll ~= nil then self.onScroll = callbacks.onScroll end
     if callbacks.onZoom ~= nil then self.onZoom = callbacks.onZoom end
     if callbacks.onMove ~= nil then self.onMove = callbacks.onMove end
@@ -587,6 +744,9 @@ function WindowManager:setCallbacks(callbacks)
     if callbacks.onNavigationComplete ~= nil then
         self.onNavigationComplete = callbacks.onNavigationComplete
     end
+    if callbacks.onTap ~= nil then self.onTap = callbacks.onTap end
+    if callbacks.onDoubleTap ~= nil then self.onDoubleTap = callbacks.onDoubleTap end
+    if callbacks.onLongPress ~= nil then self.onLongPress = callbacks.onLongPress end
     return self
 end
 
@@ -617,6 +777,24 @@ end
 function WindowManager:setOnNavigationComplete(callback)
     assert(callback == nil or type(callback) == "function", "callback must be a function or nil")
     self.onNavigationComplete = callback
+    return self
+end
+
+function WindowManager:setOnTap(callback)
+    assert(callback == nil or type(callback) == "function", "callback must be a function or nil")
+    self.onTap = callback
+    return self
+end
+
+function WindowManager:setOnDoubleTap(callback)
+    assert(callback == nil or type(callback) == "function", "callback must be a function or nil")
+    self.onDoubleTap = callback
+    return self
+end
+
+function WindowManager:setOnLongPress(callback)
+    assert(callback == nil or type(callback) == "function", "callback must be a function or nil")
+    self.onLongPress = callback
     return self
 end
 
@@ -703,6 +881,9 @@ function WindowManager:configure(options)
     if options.onNavigationComplete ~= nil then
         self:setOnNavigationComplete(options.onNavigationComplete)
     end
+    if options.onTap ~= nil then self:setOnTap(options.onTap) end
+    if options.onDoubleTap ~= nil then self:setOnDoubleTap(options.onDoubleTap) end
+    if options.onLongPress ~= nil then self:setOnLongPress(options.onLongPress) end
 
     if options.minZoom ~= nil or options.maxZoom ~= nil then
         self:setZoomLimits(options.minZoom or self.minZoom, options.maxZoom or self.maxZoom)
@@ -745,6 +926,8 @@ function WindowManager:configure(options)
     if options.alignSmallContent ~= nil then self:setAlignSmallContent(options.alignSmallContent) end
     if options.scrollSpeed ~= nil then self:setScrollSpeed(options.scrollSpeed) end
     if options.input then self:setInputOptions(options.input) end
+    if options.trackpad ~= nil then self:setTrackpadOptions(options.trackpad) end
+    if options.touchscreen ~= nil then self:setTouchOptions(options.touchscreen) end
     if options.inertia ~= nil then self:setInertia(options.inertia) end
     if options.resizable ~= nil or options.resize then
         self:setResizable(options.resizable ~= false, options.resize)
@@ -788,25 +971,49 @@ function WindowManager:wheelmoved(wx, wy)
         return true
     end
 
+    wx = wx * self.trackpadSensitivity * (self.trackpadInvertX and -1 or 1)
+    wy = wy * self.trackpadSensitivity * (self.trackpadInvertY and -1 or 1)
+
     if self:_modifierDown(self.zoomModifier) then
-        self:setZoom(self.zoom + wy * self.zoomStep, mx, my, "wheel-zoom")
+        local targetZoom
+        if self.trackpadSmooth and self.trackpadZoomMode == "exponential" then
+            targetZoom = self.zoom * math.exp(wy * self.trackpadZoomSensitivity)
+        else
+            targetZoom = self.zoom + wy * self.zoomStep
+        end
+        self:setZoom(targetZoom, mx, my, "wheel-zoom")
     else
         if not self.wheelScroll then return false end
-        self:_stopMotion()
+        self.navigation = nil
+        self.velocityX, self.velocityY = 0, 0
         if self.shiftWheelHorizontal and self.zoomModifier ~= "shift"
            and self:_modifierDown("shift") and wx == 0 then
             wx, wy = wy, 0
         end
-        local oldX, oldY, oldZoom = self:_snapshot()
-        if self.horizontalScroll then
-            self.scrollX = self.scrollX - wx * self.scrollSpeed / self.zoom
+        if self.trackpadSmooth then
+            local impulse = self.scrollSpeed * self.trackpadFriction / self.zoom
+            if self.horizontalScroll then
+                self.trackpadVelocityX = clamp(self.trackpadVelocityX - wx * impulse,
+                    -self.trackpadMaxVelocity, self.trackpadMaxVelocity)
+            end
+            if self.verticalScroll then
+                self.trackpadVelocityY = clamp(self.trackpadVelocityY - wy * impulse,
+                    -self.trackpadMaxVelocity, self.trackpadMaxVelocity)
+            end
+            self:_showScrollbars()
+        else
+            self.trackpadVelocityX, self.trackpadVelocityY = 0, 0
+            local oldX, oldY, oldZoom = self:_snapshot()
+            if self.horizontalScroll then
+                self.scrollX = self.scrollX - wx * self.scrollSpeed / self.zoom
+            end
+            if self.verticalScroll then
+                self.scrollY = self.scrollY - wy * self.scrollSpeed / self.zoom
+            end
+            self:limitScroll()
+            self:_showScrollbars()
+            self:_emitChanges(oldX, oldY, oldZoom, "wheel")
         end
-        if self.verticalScroll then
-            self.scrollY = self.scrollY - wy * self.scrollSpeed / self.zoom
-        end
-        self:limitScroll()
-        self:_showScrollbars()
-        self:_emitChanges(oldX, oldY, oldZoom, "wheel")
     end
     return true
 end
@@ -988,39 +1195,9 @@ function WindowManager:mousemoved(mx, my, dx, dy)
     end
 
     if self.isResizingWindow then
-        local oldX, oldY, oldW, oldH = self:_layoutSnapshot()
-        local deltaX = mx - self.resizeStartMouseX
-        local deltaY = my - self.resizeStartMouseY
-        local left, top = self.resizeStartX, self.resizeStartY
-        local right = self.resizeStartX + self.resizeStartW
-        local bottom = self.resizeStartY + self.resizeStartH
-        local minW, minH, maxW, maxH = self:_windowSizeLimits()
-        local screenW, screenH = love.graphics.getDimensions()
-
-        if self.resizeEdges:find("w", 1, true) then
-            left = clamp(self.resizeStartX + deltaX,
-                math.max(0, right - maxW), right - minW)
-        elseif self.resizeEdges:find("e", 1, true) then
-            right = clamp(right + deltaX, left + minW,
-                math.min(screenW, left + maxW))
-        end
-        if self.resizeEdges:find("n", 1, true) then
-            top = clamp(self.resizeStartY + deltaY,
-                math.max(0, bottom - maxH), bottom - minH)
-        elseif self.resizeEdges:find("s", 1, true) then
-            bottom = clamp(bottom + deltaY, top + minH,
-                math.min(screenH, top + maxH))
-        end
-
-        self.x, self.y, self.w, self.h = left, top, right - left, bottom - top
-        self.windowWidth, self.windowHeight = self.w, self.h
-        self.preferredW, self.preferredH = self.w, self.h
-        local oldScrollX, oldScrollY, oldZoom = self:_snapshot()
-        self:limitScroll()
-        self:_showScrollbars()
-        self:_emitChanges(oldScrollX, oldScrollY, oldZoom, "window-resize")
-        self:_emitLayoutChanges(oldX, oldY, oldW, oldH, "window-resize")
-        return true
+        return self:_applyWindowResize(self.resizeEdges,
+            self.resizeStartX, self.resizeStartY, self.resizeStartW, self.resizeStartH,
+            self.resizeStartMouseX, self.resizeStartMouseY, mx, my, "window-resize")
     end
 
     -- Dragging the window?
@@ -1122,18 +1299,23 @@ function WindowManager:_contentTouches()
     for id, touch in pairs(self.activeTouches or {}) do
         if touch.content then result[#result + 1] = { id = id, touch = touch } end
     end
+    table.sort(result, function(a, b) return a.touch.order < b.touch.order end)
     return result
 end
 
 function WindowManager:_startPinchIfPossible()
     if not self.pinchToZoom then return end
+    if self.pinch and self.activeTouches
+       and self.activeTouches[self.pinch.first] and self.activeTouches[self.pinch.second] then
+        return
+    end
     local touches = self:_contentTouches()
     if #touches < 2 then return end
     local first, second = touches[1], touches[2]
     local dx = second.touch.x - first.touch.x
     local dy = second.touch.y - first.touch.y
     local distance = math.sqrt(dx * dx + dy * dy)
-    if distance <= 0 then return end
+    if distance < self.touchPinchMinDistance then return end
     local middleX = (first.touch.x + second.touch.x) / 2
     local middleY = (first.touch.y + second.touch.y) / 2
     local contentX, contentY = self:screenToContent(middleX, middleY)
@@ -1142,10 +1324,87 @@ function WindowManager:_startPinchIfPossible()
         second = second.id,
         distance = distance,
         zoom = self.zoom,
+        middleX = middleX,
+        middleY = middleY,
         contentX = contentX,
         contentY = contentY
     }
+    first.touch.gesture, second.touch.gesture = true, true
+    first.touch.panning, second.touch.panning = false, false
+    self.lastTap = nil
     self.velocityX, self.velocityY = 0, 0
+    self.trackpadVelocityX, self.trackpadVelocityY = 0, 0
+end
+
+function WindowManager:_dispatchTap(tap)
+    if tap and self.onTap and not self._suppressCallbacks then
+        self.onTap(tap.screenX, tap.screenY, tap.contentX, tap.contentY,
+            self, tap.pressure)
+    end
+end
+
+function WindowManager:_registerTouchTap(touch, tx, ty, pressure, now)
+    local contentX, contentY = self:screenToContent(tx, ty)
+    local previous = self.lastTap
+    if previous then
+        local ddx, ddy = tx - previous.screenX, ty - previous.screenY
+        local closeEnough = ddx * ddx + ddy * ddy
+            <= self.touchDoubleTapDistance * self.touchDoubleTapDistance
+        if now - previous.time <= self.touchDoubleTapInterval and closeEnough then
+            self.lastTap = nil
+            local allowDefault = true
+            if self.onDoubleTap and not self._suppressCallbacks then
+                allowDefault = self.onDoubleTap(tx, ty, contentX, contentY,
+                    self, pressure) ~= false
+            end
+            if self.touchDoubleTapZoomEnabled and allowDefault then
+                local zoomingOut = math.abs(self.zoom - self.touchDoubleTapZoom)
+                    <= math.max(0.01, self.touchDoubleTapZoom * 0.1)
+                local target = zoomingOut and self.touchDoubleTapResetZoom
+                    or self.touchDoubleTapZoom
+                self:zoomTo(target, tx, ty, {
+                    duration = self.touchDoubleTapDuration,
+                    reason = "double-tap"
+                })
+            end
+            return
+        end
+        self:_dispatchTap(previous)
+    end
+    if self.onTap or self.onDoubleTap or self.touchDoubleTapZoomEnabled then
+        self.lastTap = {
+            time = now,
+            screenX = tx,
+            screenY = ty,
+            contentX = contentX,
+            contentY = contentY,
+            pressure = pressure or touch.pressure
+        }
+    end
+end
+
+function WindowManager:_updateTouchGestures()
+    local now = inputTime()
+    if self.onLongPress and self.touchLongPressDelay >= 0 then
+        for _, touch in pairs(self.activeTouches or {}) do
+            if touch.content and not touch.gesture and not touch.panning
+               and not touch.longPressFired
+               and touch.movedDistance <= self.touchPanThreshold
+               and now - touch.startTime >= self.touchLongPressDelay then
+                touch.longPressFired = true
+                if not self._suppressCallbacks then
+                    local contentX, contentY = self:screenToContent(touch.x, touch.y)
+                    self.onLongPress(touch.x, touch.y, contentX, contentY,
+                        self, touch.pressure)
+                end
+            end
+        end
+    end
+    if self.lastTap and now - self.lastTap.time > self.touchDoubleTapInterval then
+        local tap = self.lastTap
+        self.lastTap = nil
+        self:_dispatchTap(tap)
+    end
 end
 
 function WindowManager:touchpressed(id, tx, ty, dx, dy, pressure)
@@ -1153,15 +1412,49 @@ function WindowManager:touchpressed(id, tx, ty, dx, dy, pressure)
         return false
     end
     self.activeTouches = self.activeTouches or {}
+    self.touchCounter = self.touchCounter + 1
+    local now = inputTime()
     local offsetTop = self.isFloating and self.titleBarHeight or 0
-    self.activeTouches[id] = {
+    local localY = ty - self.y
+    local mode = localY >= offsetTop and "content" or "chrome"
+    local resizeEdges
+    if self.touchResize then
+        resizeEdges = self:_getResizeEdges(tx, ty, self.touchResizeBorder)
+        -- Large touch targets are useful at corners, but single edges would
+        -- consume too much content and scrollbar area on small screens.
+        if resizeEdges and #resizeEdges >= 2 then mode = "resize" else resizeEdges = nil end
+    end
+    if not resizeEdges and self.isFloating and self.isDraggable and localY < offsetTop then
+        mode = "window"
+    end
+    local touch = {
         x = tx,
         y = ty,
-        content = (ty - self.y) >= offsetTop and self.touchScroll and self.dragToScroll
+        startX = tx,
+        startY = ty,
+        startTime = now,
+        lastTime = now,
+        pressure = pressure,
+        order = self.touchCounter,
+        mode = mode,
+        content = mode == "content",
+        panning = false,
+        gesture = false,
+        longPressFired = false,
+        movedDistance = 0
     }
+    if mode == "window" then
+        touch.windowOffsetX, touch.windowOffsetY = tx - self.x, ty - self.y
+    elseif mode == "resize" then
+        touch.resizeEdges = resizeEdges
+        touch.resizeStartX, touch.resizeStartY = self.x, self.y
+        touch.resizeStartW, touch.resizeStartH = self.w, self.h
+    end
+    self.activeTouches[id] = touch
     self:_stopMotion()
-    self.lastDragTime = inputTime()
+    self.lastDragTime = now
     self:_startPinchIfPossible()
+    if self.pinch and touch.content then touch.gesture = true end
     self:_showScrollbars()
     return true
 end
@@ -1171,12 +1464,30 @@ function WindowManager:touchmoved(id, tx, ty, dx, dy, pressure)
         return false
     end
     local touch = self.activeTouches[id]
+    local previousX, previousY = touch.x, touch.y
     touch.x, touch.y = tx, ty
+    touch.pressure = pressure or touch.pressure
+    local totalX, totalY = tx - touch.startX, ty - touch.startY
+    touch.movedDistance = math.sqrt(totalX * totalX + totalY * totalY)
+
+    if touch.mode == "window" then
+        local oldX, oldY, oldW, oldH = self:_layoutSnapshot()
+        local sw, sh = love.graphics.getDimensions()
+        self.x = clamp(tx - touch.windowOffsetX, 0, math.max(0, sw - self.w))
+        self.y = clamp(ty - touch.windowOffsetY, 0, math.max(0, sh - self.h))
+        self:_emitLayoutChanges(oldX, oldY, oldW, oldH, "touch-window-drag")
+        return true
+    elseif touch.mode == "resize" then
+        return self:_applyWindowResize(touch.resizeEdges,
+            touch.resizeStartX, touch.resizeStartY,
+            touch.resizeStartW, touch.resizeStartH,
+            touch.startX, touch.startY, tx, ty, "touch-window-resize")
+    end
     if not touch.content then
         return true
     end
 
-
+    if not self.pinch then self:_startPinchIfPossible() end
     if self.pinch and (id == self.pinch.first or id == self.pinch.second) then
         local first = self.activeTouches[self.pinch.first]
         local second = self.activeTouches[self.pinch.second]
@@ -1184,8 +1495,12 @@ function WindowManager:touchmoved(id, tx, ty, dx, dy, pressure)
             local oldX, oldY, oldZoom = self:_snapshot()
             local distanceX, distanceY = second.x - first.x, second.y - first.y
             local distance = math.sqrt(distanceX * distanceX + distanceY * distanceY)
-            local middleX, middleY = (first.x + second.x) / 2, (first.y + second.y) / 2
-            local targetZoom = clamp(self.pinch.zoom * distance / self.pinch.distance,
+            local currentMiddleX = (first.x + second.x) / 2
+            local currentMiddleY = (first.y + second.y) / 2
+            local middleX = self.touchTwoFingerPan and currentMiddleX or self.pinch.middleX
+            local middleY = self.touchTwoFingerPan and currentMiddleY or self.pinch.middleY
+            local ratio = math.max(distance, 1) / self.pinch.distance
+            local targetZoom = clamp(self.pinch.zoom * ratio ^ self.touchPinchSensitivity,
                 self.minZoom, self.maxZoom)
             local offsetTop = self.isFloating and self.titleBarHeight or 0
             self.zoom = targetZoom
@@ -1202,26 +1517,38 @@ function WindowManager:touchmoved(id, tx, ty, dx, dy, pressure)
         end
         return true
     end
+    if self.pinch then return true end
+
+    if not self.touchScroll or not self.dragToScroll then
+        touch.lastTime = inputTime()
+        return true
+    end
+    if not touch.panning then
+        if touch.movedDistance <= self.touchPanThreshold then return true end
+        touch.panning = true
+    end
 
     local oldX, oldY, oldZoom = self:_snapshot()
-    local ddx = dx / self.zoom
-    local ddy = dy / self.zoom
+    local moveX, moveY = tx - previousX, ty - previousY
+    local ddx = moveX / self.zoom
+    local ddy = moveY / self.zoom
     if self.horizontalScroll then self.scrollX = self.scrollX - ddx end
     if self.verticalScroll then self.scrollY = self.scrollY - ddy end
 
     local now = inputTime()
-    local elapsed = now - (self.lastDragTime or now)
+    local elapsed = now - (touch.lastTime or now)
     if self.inertiaEnabled and elapsed > 1e-4 then
         local factor = math.min(1, elapsed * 18)
         if self.horizontalScroll then
-            local sampleX = -dx / self.zoom / elapsed
+            local sampleX = -moveX / self.zoom / elapsed
             self.velocityX = self.velocityX + (sampleX - self.velocityX) * factor
         end
         if self.verticalScroll then
-            local sampleY = -dy / self.zoom / elapsed
+            local sampleY = -moveY / self.zoom / elapsed
             self.velocityY = self.velocityY + (sampleY - self.velocityY) * factor
         end
     end
+    touch.lastTime = now
     self.lastDragTime = now
     self:limitScroll()
     self:_showScrollbars()
@@ -1233,9 +1560,27 @@ function WindowManager:touchreleased(id, tx, ty, dx, dy, pressure)
     if not self.activeTouches or not self.activeTouches[id] then
         return false
     end
+    local touch = self.activeTouches[id]
+    local now = inputTime()
+    local totalX, totalY = tx - touch.startX, ty - touch.startY
+    touch.movedDistance = math.sqrt(totalX * totalX + totalY * totalY)
+    touch.pressure = pressure or touch.pressure
+    local wasPinch = self.pinch and (id == self.pinch.first or id == self.pinch.second)
+    if touch.content and not touch.gesture and not touch.panning
+       and not touch.longPressFired and touch.movedDistance <= self.touchPanThreshold then
+        self:_registerTouchTap(touch, tx, ty, pressure, now)
+    end
+
     self.activeTouches[id] = nil
-    if self.pinch and (id == self.pinch.first or id == self.pinch.second) then
+    if wasPinch then
         self.pinch = nil
+        for _, remaining in pairs(self.activeTouches) do
+            if remaining.content and remaining.gesture then
+                remaining.startX, remaining.startY = remaining.x, remaining.y
+                remaining.lastTime = now
+                remaining.panning = true
+            end
+        end
         self:_startPinchIfPossible()
     end
     if not next(self.activeTouches) then
@@ -1497,6 +1842,7 @@ function WindowManager:_navigate(targetX, targetY, targetZoom, options, defaultR
     local reason = options.reason or defaultReason or "navigation"
 
     self.velocityX, self.velocityY = 0, 0
+    self.trackpadVelocityX, self.trackpadVelocityY = 0, 0
     if duration == 0 then
         local oldX, oldY, oldZoom = self:_snapshot()
         self.navigation = nil
@@ -1601,6 +1947,10 @@ end
 
 function WindowManager:isNavigating()
     return self.navigation ~= nil
+end
+
+function WindowManager:isTrackpadScrolling()
+    return self.trackpadVelocityX ~= 0 or self.trackpadVelocityY ~= 0
 end
 
 function WindowManager:cancelNavigation()
@@ -1754,7 +2104,8 @@ end
 function WindowManager:_updateInertia(dt)
     if not self.inertiaEnabled or self.navigation or self.isDraggingContent
        or self.isDraggingVertical or self.isDraggingHorizontal
-       or self.pinch or next(self.activeTouches or {}) then
+       or self.pinch or next(self.activeTouches or {})
+       or self.trackpadVelocityX ~= 0 or self.trackpadVelocityY ~= 0 then
         return false
     end
     if math.abs(self.velocityX) < self.inertiaMinVelocity then self.velocityX = 0 end
@@ -1775,9 +2126,36 @@ function WindowManager:_updateInertia(dt)
     return true
 end
 
+function WindowManager:_updateTrackpad(dt)
+    if not self.trackpadSmooth or self.navigation or self.isDraggingContent
+       or self.isDraggingVertical or self.isDraggingHorizontal
+       or self.pinch or next(self.activeTouches or {}) then
+        return false
+    end
+    if math.abs(self.trackpadVelocityX) < 1 then self.trackpadVelocityX = 0 end
+    if math.abs(self.trackpadVelocityY) < 1 then self.trackpadVelocityY = 0 end
+    if self.trackpadVelocityX == 0 and self.trackpadVelocityY == 0 then return false end
+
+    local oldX, oldY, oldZoom = self:_snapshot()
+    local step = math.min(dt, 0.05)
+    if self.horizontalScroll then self.scrollX = self.scrollX + self.trackpadVelocityX * step end
+    if self.verticalScroll then self.scrollY = self.scrollY + self.trackpadVelocityY * step end
+    self:limitScroll()
+    if not changed(oldX, self.scrollX) then self.trackpadVelocityX = 0 end
+    if not changed(oldY, self.scrollY) then self.trackpadVelocityY = 0 end
+    local damping = math.exp(-self.trackpadFriction * step)
+    self.trackpadVelocityX = self.trackpadVelocityX * damping
+    self.trackpadVelocityY = self.trackpadVelocityY * damping
+    self:_showScrollbars()
+    self:_emitChanges(oldX, oldY, oldZoom, "trackpad")
+    return true
+end
+
 function WindowManager:update(dt)
     assert(type(dt) == "number" and dt >= 0, "dt must be a non-negative number")
+    self:_updateTouchGestures()
     self:_updateNavigation(dt)
+    self:_updateTrackpad(dt)
     self:_updateInertia(dt)
 
     if not self.showScrollbar or not self.scrollbarAutoHide then
@@ -1786,7 +2164,8 @@ function WindowManager:update(dt)
     end
     if self.isDraggingVertical or self.isDraggingHorizontal or self.isDraggingContent
        or self.isResizingWindow or self.hoveredScrollbar or self.navigation
-       or self.velocityX ~= 0 or self.velocityY ~= 0 then
+       or self.velocityX ~= 0 or self.velocityY ~= 0
+       or self.trackpadVelocityX ~= 0 or self.trackpadVelocityY ~= 0 then
         self:_showScrollbars()
         return
     end
@@ -1852,8 +2231,10 @@ function WindowManager:cancelInput()
     self.isDraggingContent = false
     self.activeTouches = {}
     self.pinch = nil
+    self.lastTap = nil
     self.lastDragTime = nil
     self.velocityX, self.velocityY = 0, 0
+    self.trackpadVelocityX, self.trackpadVelocityY = 0, 0
     self.hoveredScrollbar = nil
 end
 

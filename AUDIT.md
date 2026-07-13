@@ -2,7 +2,16 @@
 
 ## Статус
 
-P0, P1 и P2 закрыты. В версии `1.1.0` шаблон дополнительно получил программную навигацию, инерцию, pinch zoom, resize floating-окон, modal routing и сохранение состояния stack без удаления совместимых методов.
+P0, P1 и P2 закрыты. Версия `1.2.0` дополняет готовый шаблон плавным precision-touchpad и устойчивыми touchscreen-жестами без удаления совместимых методов.
+
+## Расширение 1.2
+
+- Дробные wheel delta, momentum, friction, inversion и экспоненциальный zoom для
+  touchpad с сохранением прежнего wheel-режима по умолчанию.
+- Порог pan, pinch + two-finger pan, детерминированный выбор touch-пары и
+  бесшовный переход к одному пальцу.
+- Delayed tap, double-tap zoom, long press, touch title drag и corner resize.
+- Автоматические тесты жестов, обновлённые API, mobile checklist и live example.
 
 ## Расширение 1.1
 
@@ -43,8 +52,9 @@ P0, P1 и P2 закрыты. В версии `1.1.0` шаблон дополни
 
 - `test_window_manager.lua` — геометрия, navigation, inertia, pinch, scrollbar, resize.
 - `test_window_stack.lua` — порядок, focus, modal capture, state, visibility, removal.
-- `test_api.lua` — API 1.1, validation, callbacks, безопасный draw.
+- `test_api.lua` — API 1.2, validation, callbacks, безопасный draw.
 - `test_mobile_hidpi.lua` — DPI 2×, touch delta, orientation и cancel.
+- `test_gestures.lua` — touchpad momentum/zoom и touchscreen gestures/chrome.
 - `test_main_smoke.lua` — полный жизненный цикл showcase.
 - `test_examples_smoke.lua` — все девять отдельных сценариев.
 - `.github/workflows/ci.yml` — реальный LÖVE 11.5 smoke и `.love` artifact.

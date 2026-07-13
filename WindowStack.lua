@@ -1,6 +1,6 @@
 local WindowStack = {}
 WindowStack.__index = WindowStack
-WindowStack.VERSION = "1.1.0"
+WindowStack.VERSION = "1.2.0"
 
 local function option(value, default)
     if value == nil then return default end

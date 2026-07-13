@@ -72,9 +72,9 @@ love . --mobile-test
 
 Source: [`mobile_test.lua`](../examples/mobile_test.lua).
 
-## 8. Smooth camera targets and kinetic navigation
+## 8. Trackpad and touchscreen navigation
 
-Enable inertia for direct manipulation, use pinch zoom on touch devices, and move to known content targets with easing. `ensureVisible` is useful for selected objects, tutorial highlights, and keyboard focus.
+Enable smooth fractional wheel deltas for precision touchpads, use pinch + midpoint pan on touchscreens, and move to known content targets with easing. The same example also demonstrates delayed tap, double-tap zoom, long press, and touch-sized floating-window controls.
 
 ```bash
 love . --example=navigation-lab
@@ -83,6 +83,19 @@ love . --example=navigation-lab
 Source: [`navigation_lab.lua`](../examples/navigation_lab.lua).
 
 ```lua
+viewport:setTrackpadOptions({
+    smooth = true,
+    friction = 14,
+    zoomMode = "exponential"
+})
+
+viewport:setTouchOptions({
+    panThreshold = 4,
+    twoFingerPan = true,
+    doubleTap = true,
+    doubleTapZoom = 2
+})
+
 viewport:centerOn(target.x, target.y, {
     duration = 0.4,
     easing = "inOutQuad"
@@ -93,6 +106,8 @@ viewport:ensureVisible(target.x, target.y, target.w, target.h, {
     duration = 0.25
 })
 ```
+
+LÖVE sends both mouse wheels and laptop touchpads through `love.wheelmoved`, so smooth trackpad policy also affects a connected mouse wheel. Keep it disabled when strict wheel steps are preferable.
 
 ## 9. Resizable editor panel
 

@@ -6,14 +6,14 @@
   <a href="https://github.com/SMETAHA/love2d-window-kit/actions/workflows/ci.yml"><img src="https://github.com/SMETAHA/love2d-window-kit/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/SMETAHA/love2d-window-kit/actions/workflows/pages.yml"><img src="https://github.com/SMETAHA/love2d-window-kit/actions/workflows/pages.yml/badge.svg" alt="GitHub Pages"></a>
   <img src="https://img.shields.io/badge/LÖVE-11.5-EA316E?logo=love&logoColor=white" alt="LÖVE 11.5">
-  <img src="https://img.shields.io/badge/API-1.1.0-8B5CF6" alt="API 1.1.0">
+  <img src="https://img.shields.io/badge/API-1.2.0-8B5CF6" alt="API 1.2.0">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-22C55E" alt="MIT License"></a>
 </p>
 
 <p align="center">
   A lightweight window and viewport toolkit for <strong>LÖVE2D</strong> with scrolling,
-  animated navigation, kinetic scrolling, pinch zoom, resizable floating windows,
-  modal focus routing and touch support.
+  animated navigation, precision-trackpad scrolling, touchscreen gestures,
+  resizable floating windows and modal focus routing.
 </p>
 
 <p align="center">
@@ -37,9 +37,10 @@ LÖVE gives you a powerful rendering and input layer, but it intentionally does 
 
 | Capability | Included |
 | --- | :---: |
-| Wheel, keyboard, drag, touch and opt-in kinetic scrolling | ✓ |
+| Wheel, keyboard, drag, touch and kinetic scrolling | ✓ |
+| Smooth fractional-delta scrolling for precision touchpads | ✓ |
 | Zoom anchored under the mouse cursor | ✓ |
-| Pinch zoom and smooth `scrollTo` / `zoomTo` navigation | ✓ |
+| Pinch + two-finger pan, double tap and long press | ✓ |
 | Draggable, constrained and resizable floating windows | ✓ |
 | Layered z-order, focus, stable IDs and modal routing | ✓ |
 | Mouse capture and independent multi-touch capture | ✓ |
@@ -73,6 +74,10 @@ function love.load()
         inertia = true,
         contentWidth = 2000,
         contentHeight = 1500,
+        input = {
+            trackpad = { smooth = true },
+            touchscreen = { doubleTap = true, twoFingerPan = true }
+        },
         scrollbar = { autoHide = true, minThumbSize = 28 }
     })
 
@@ -89,13 +94,19 @@ end
 function love.update(dt) windows:update(dt) end
 function love.draw() windows:draw() end
 function love.resize(w, h) windows:resize(w, h) end
-function love.mousepressed(...) windows:mousepressed(...) end
-function love.mousereleased(...) windows:mousereleased(...) end
-function love.mousemoved(...) windows:mousemoved(...) end
+function love.mousepressed(x, y, button, istouch, presses)
+    if not istouch then windows:mousepressed(x, y, button, false, presses) end
+end
+function love.mousereleased(x, y, button, istouch, presses)
+    if not istouch then windows:mousereleased(x, y, button, false, presses) end
+end
+function love.mousemoved(x, y, dx, dy, istouch)
+    if not istouch then windows:mousemoved(x, y, dx, dy, false) end
+end
 function love.wheelmoved(...) windows:wheelmoved(...) end
 ```
 
-Touch, keyboard and text callbacks follow the same forwarding pattern. See [`examples/support.lua`](examples/support.lua) for the complete bridge.
+Forward touch, keyboard and text callbacks in the same way. When native touch callbacks are forwarded, ignore mouse callbacks whose `istouch` flag is true to avoid handling one physical touch twice. See [`examples/support.lua`](examples/support.lua) for the complete bridge.
 
 Center a target smoothly or reveal a content rectangle without writing camera math:
 
@@ -141,7 +152,7 @@ love . --example=multi-window-dashboard
 | Themed scrollbars | `love . --example=themed-scrollbars` | Theme colors, paging, hover and auto-hide |
 | State and callbacks | `love . --example=state-callbacks` | Save/load and event reasons |
 | Large map culling | `love . --example=large-map-culling` | A 20,000 × 20,000 tile map drawn by visible range |
-| Navigation lab | `love . --example=navigation-lab` | Inertia, pinch, animated targets and corner resize |
+| Navigation lab | `love . --example=navigation-lab` | Smooth trackpad, pinch + pan, tap/hold and touch resize |
 | Mobile diagnostics | `love . --mobile-test` | Multi-touch, DPI and orientation |
 | Full showcase | `love .` | Combined desktop demonstration |
 
@@ -160,7 +171,17 @@ local viewport = WindowManager.new({
     resize = { minWidth = 420, minHeight = 280, border = 10 },
     dragToScroll = true,
     inertia = { enabled = true, friction = 7, minVelocity = 18 },
-    input = { pinchZoom = true, shiftWheelHorizontal = true },
+    input = {
+        pinchZoom = true,
+        shiftWheelHorizontal = true,
+        trackpad = { smooth = true, friction = 14 },
+        touchscreen = {
+            panThreshold = 4,
+            twoFingerPan = true,
+            doubleTap = true,
+            doubleTapZoom = 2
+        }
+    },
     contentWidth = 2400,
     contentHeight = 1800,
     zoom = 1,

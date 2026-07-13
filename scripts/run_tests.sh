@@ -11,6 +11,7 @@ for test in \
     tests/test_window_stack.lua \
     tests/test_api.lua \
     tests/test_mobile_hidpi.lua \
+    tests/test_gestures.lua \
     tests/test_main_smoke.lua
 do
     "$LUA_BIN" "$test"

@@ -175,15 +175,15 @@ end
 ------------------------------------------------------------------------------
 
 function love.mousepressed(x, y, button, istouch, presses)
-    windowStack:mousepressed(x, y, button, istouch, presses)
+    if not istouch then windowStack:mousepressed(x, y, button, false, presses) end
 end
 
 function love.mousereleased(x, y, button, istouch, presses)
-    windowStack:mousereleased(x, y, button, istouch, presses)
+    if not istouch then windowStack:mousereleased(x, y, button, false, presses) end
 end
 
 function love.mousemoved(x, y, dx, dy, istouch)
-    windowStack:mousemoved(x, y, dx, dy, istouch)
+    if not istouch then windowStack:mousemoved(x, y, dx, dy, false) end
 end
 
 function love.wheelmoved(wx, wy)

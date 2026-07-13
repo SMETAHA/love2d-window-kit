@@ -2,6 +2,43 @@
 
 Все заметные изменения проекта документируются здесь. Версии следуют Semantic Versioning.
 
+## 1.2.0 — 2026-07-13
+
+### Added
+
+- Опциональный smooth-режим для precision touchpad: дробные `wheelmoved` delta,
+  настраиваемые sensitivity/inversion, momentum, friction и ограничение скорости.
+- Экспоненциальный cursor-anchored zoom для плавных touchpad delta.
+- Touchscreen-жесты: порог случайного движения, одновременные pinch + two-finger
+  pan, стабильный переход от двух пальцев к одному, opt-in double tap и long press.
+- Touch-управление floating-окном: title-bar drag и увеличенные угловые
+  resize-зоны.
+- `setTrackpadOptions`, `setTouchOptions`, `isTrackpadScrolling` и callbacks
+  `onTap`, `onDoubleTap`, `onLongPress`.
+- Автоматические тесты trackpad momentum, zoom anchor, tap/hold, переходов pinch
+  и touch drag/resize.
+
+### Changed
+
+- `navigation-lab`, README, двуязычный API, mobile checklist и live-сайт
+  обновлены для демонстрации жестов 1.2.
+- Выбор пары pinch теперь детерминирован порядком касаний, включая третий палец.
+
+### Fixed
+
+- Callback bridge в шаблоне и примерах отбрасывает mouse-события с
+  `istouch = true`, если используются native touch callbacks; одно касание больше
+  не запускает одновременно mouse drag и touch gesture.
+
+### Compatibility
+
+- Smooth trackpad остаётся выключенным по умолчанию: обычное колесо и API 1.1
+  сохраняют прежнее пошаговое поведение.
+- Встроенный double-tap zoom также включается явно, чтобы существующие touch UI
+  не меняли поведение после обновления.
+- LÖVE передаёт mouse wheel и laptop touchpad через общий `love.wheelmoved`,
+  поэтому включённая smooth-политика применяется к обоим устройствам.
+
 ## 1.1.0 — 2026-07-13
 
 ### Added

@@ -61,9 +61,15 @@ function Support.bind(getStack, hooks)
         if hooks.resize then hooks.resize(w, h) end
     end
 
-    function love.mousepressed(...) getStack():mousepressed(...) end
-    function love.mousereleased(...) getStack():mousereleased(...) end
-    function love.mousemoved(...) getStack():mousemoved(...) end
+    function love.mousepressed(x, y, button, istouch, presses)
+        if not istouch then getStack():mousepressed(x, y, button, false, presses) end
+    end
+    function love.mousereleased(x, y, button, istouch, presses)
+        if not istouch then getStack():mousereleased(x, y, button, false, presses) end
+    end
+    function love.mousemoved(x, y, dx, dy, istouch)
+        if not istouch then getStack():mousemoved(x, y, dx, dy, false) end
+    end
     function love.wheelmoved(...) getStack():wheelmoved(...) end
     function love.touchpressed(...) getStack():touchpressed(...) end
     function love.touchmoved(...) getStack():touchmoved(...) end

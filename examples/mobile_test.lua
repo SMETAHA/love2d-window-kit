@@ -63,9 +63,15 @@ function love.draw()
 end
 
 function love.resize(w, h) windows:resize(w, h) end
-function love.mousepressed(...) windows:mousepressed(...) end
-function love.mousereleased(...) windows:mousereleased(...) end
-function love.mousemoved(...) windows:mousemoved(...) end
+function love.mousepressed(x, y, button, istouch, presses)
+    if not istouch then windows:mousepressed(x, y, button, false, presses) end
+end
+function love.mousereleased(x, y, button, istouch, presses)
+    if not istouch then windows:mousereleased(x, y, button, false, presses) end
+end
+function love.mousemoved(x, y, dx, dy, istouch)
+    if not istouch then windows:mousemoved(x, y, dx, dy, false) end
+end
 function love.wheelmoved(...) windows:wheelmoved(...) end
 
 function love.touchpressed(id, x, y, dx, dy, pressure)

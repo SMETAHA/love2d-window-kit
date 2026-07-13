@@ -38,9 +38,9 @@ local WindowManager = require("WindowManager")
 local WindowStack = require("WindowStack")
 local SystemWindow = require("SystemWindow")
 
-assert(WindowManager.VERSION == "1.1.0")
-assert(WindowStack.VERSION == "1.1.0")
-assert(SystemWindow.VERSION == "1.1.0")
+assert(WindowManager.VERSION == "1.2.0")
+assert(WindowStack.VERSION == "1.2.0")
+assert(SystemWindow.VERSION == "1.2.0")
 
 assert(SystemWindow.configure({
     width = 800,
@@ -95,6 +95,11 @@ assert(window.title == "Configured" and window.isDraggable)
 assert(window.isResizable and window.minWindowWidth == 300)
 assert(window.verticalScrollbarHeight >= 50 and window.horizontalScrollbarWidthScaled >= 50)
 
+window:setTrackpadOptions({ smooth = true, sensitivity = 1.25, zoomMode = "exponential" })
+window:setTouchOptions({ panThreshold = 5, twoFingerPan = true, doubleTap = true })
+assert(window.trackpadSmooth and window.trackpadSensitivity == 1.25)
+assert(window.touchPanThreshold == 5 and window.touchTwoFingerPan)
+
 window.scrollX, window.scrollY = 100, 100
 window:setZoom(2, 260, 144, "anchor-test")
 assert(math.abs(window.scrollX - 225) < 1e-6)
@@ -129,7 +134,9 @@ assert(stackDepth == 0, "draw errors must restore the graphics stack")
 assert(not pcall(function() window:setZoomLimits(2, 1) end))
 assert(not pcall(function() window:setScrollbarOptions({ color = {2, 0, 0} }) end))
 assert(not pcall(function() window:setInputOptions({ zoomModifier = "invalid" }) end))
+assert(not pcall(function() window:setTrackpadOptions({ friction = 0 }) end))
+assert(not pcall(function() window:setTouchOptions({ pinchSensitivity = 0 }) end))
 assert(not pcall(function() SystemWindow.configure({ minwidth = 0 }) end))
-assert(window:getState().version == "1.1.0")
+assert(window:getState().version == "1.2.0")
 
 print("Public API tests passed")
