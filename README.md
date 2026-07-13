@@ -6,13 +6,14 @@
   <a href="https://github.com/SMETAHA/love2d-window-kit/actions/workflows/ci.yml"><img src="https://github.com/SMETAHA/love2d-window-kit/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/SMETAHA/love2d-window-kit/actions/workflows/pages.yml"><img src="https://github.com/SMETAHA/love2d-window-kit/actions/workflows/pages.yml/badge.svg" alt="GitHub Pages"></a>
   <img src="https://img.shields.io/badge/LÖVE-11.5-EA316E?logo=love&logoColor=white" alt="LÖVE 11.5">
-  <img src="https://img.shields.io/badge/API-1.0.0-8B5CF6" alt="API 1.0.0">
+  <img src="https://img.shields.io/badge/API-1.1.0-8B5CF6" alt="API 1.1.0">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-22C55E" alt="MIT License"></a>
 </p>
 
 <p align="center">
   A lightweight window and viewport toolkit for <strong>LÖVE2D</strong> with scrolling,
-  cursor-centered zoom, draggable floating windows, layered focus routing and touch support.
+  animated navigation, kinetic scrolling, pinch zoom, resizable floating windows,
+  modal focus routing and touch support.
 </p>
 
 <p align="center">
@@ -26,7 +27,7 @@
 
 ## Live browser demo
 
-Open the [interactive GitHub Pages site](https://smetaha.github.io/love2d-window-kit/) to run the actual Lua library in your browser. The site uses a pinned LÖVE 11.5 `love.js` compatibility build and lets you switch between the showcase, floating inventory, multi-window dashboard, themed scrollbars, large-map culling and touch diagnostics.
+Open the [interactive GitHub Pages site](https://smetaha.github.io/love2d-window-kit/) to run the actual Lua library in your browser. Pick an example, read the controls, and launch the matching LÖVE 11.5 `love.js` build directly on the page.
 
 The Pages workflow builds directly from the repository on every push to `main`; compiled WebAssembly files are deployment artifacts and do not need to be committed.
 
@@ -36,14 +37,15 @@ LÖVE gives you a powerful rendering and input layer, but it intentionally does 
 
 | Capability | Included |
 | --- | :---: |
-| Smooth wheel, keyboard, drag and touch scrolling | ✓ |
+| Wheel, keyboard, drag, touch and opt-in kinetic scrolling | ✓ |
 | Zoom anchored under the mouse cursor | ✓ |
-| Floating windows with draggable title bars | ✓ |
-| Layered z-order, focus and bring-to-front | ✓ |
+| Pinch zoom and smooth `scrollTo` / `zoomTo` navigation | ✓ |
+| Draggable, constrained and resizable floating windows | ✓ |
+| Layered z-order, focus, stable IDs and modal routing | ✓ |
 | Mouse capture and independent multi-touch capture | ✓ |
 | Styled scrollbars with paging, hover, fade and minimum thumb size | ✓ |
 | Responsive resize, high-DPI and orientation handling | ✓ |
-| State save/restore and consistent scroll/zoom callbacks | ✓ |
+| Viewport/stack state save and scroll/zoom/layout callbacks | ✓ |
 | Lua 5.1 tests and real LÖVE 11.5 CI smoke run | ✓ |
 
 ## Quick start
@@ -67,12 +69,15 @@ function love.load()
         height = 400,
         title = "Inventory",
         draggable = true,
+        resizable = true,
+        inertia = true,
         contentWidth = 2000,
         contentHeight = 1500,
         scrollbar = { autoHide = true, minThumbSize = 28 }
     })
 
     windows:add(inventory, {
+        id = "inventory",
         layer = 100,
         draw = function(scrollX, scrollY, visibleWidth, visibleHeight)
             -- Draw content in content-space coordinates.
@@ -91,6 +96,16 @@ function love.wheelmoved(...) windows:wheelmoved(...) end
 ```
 
 Touch, keyboard and text callbacks follow the same forwarding pattern. See [`examples/support.lua`](examples/support.lua) for the complete bridge.
+
+Center a target smoothly or reveal a content rectangle without writing camera math:
+
+```lua
+inventory:centerOn(player.x, player.y, { duration = 0.35, easing = "inOutQuad" })
+inventory:ensureVisible(item.x, item.y, item.w, item.h, {
+    padding = 48,
+    duration = 0.25
+})
+```
 
 ## Architecture
 
@@ -126,6 +141,7 @@ love . --example=multi-window-dashboard
 | Themed scrollbars | `love . --example=themed-scrollbars` | Theme colors, paging, hover and auto-hide |
 | State and callbacks | `love . --example=state-callbacks` | Save/load and event reasons |
 | Large map culling | `love . --example=large-map-culling` | A 20,000 × 20,000 tile map drawn by visible range |
+| Navigation lab | `love . --example=navigation-lab` | Inertia, pinch, animated targets and corner resize |
 | Mobile diagnostics | `love . --mobile-test` | Multi-touch, DPI and orientation |
 | Full showcase | `love .` | Combined desktop demonstration |
 
@@ -140,7 +156,11 @@ local viewport = WindowManager.new({
     width = 760, height = 520,
     title = "Document",
     draggable = true,
+    resizable = true,
+    resize = { minWidth = 420, minHeight = 280, border = 10 },
     dragToScroll = true,
+    inertia = { enabled = true, friction = 7, minVelocity = 18 },
+    input = { pinchZoom = true, shiftWheelHorizontal = true },
     contentWidth = 2400,
     contentHeight = 1800,
     zoom = 1,

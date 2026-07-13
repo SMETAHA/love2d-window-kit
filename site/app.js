@@ -1,236 +1,226 @@
-const translations = {
-    en: {
-        navDemo: "Live demo",
-        navFeatures: "Features",
-        navExamples: "Examples",
-        navApi: "API",
-        heroTitle:
-            "Windows inside your game.<br><span>Without a GUI framework.</span>",
-        heroLead:
-            "A focused toolkit for scrollable viewports, cursor-centered zoom, draggable floating windows, layered input and touch.",
-        runDemo: "Run the live demo",
-        viewSource: "View source",
-        metaApi: "stable API",
-        metaExamples: "runnable examples",
-        metaChecks: "test scenarios",
-        demoKicker: "Compiled from the repository",
-        demoTitle: "The real Lua library, running in your browser",
-        demoLead:
-            "The compatibility build uses WebAssembly and the same modules that ship in the release. Pick a scenario and interact with it.",
-        scenarioShowcase: "Showcase",
-        scenarioInventory: "Inventory",
-        scenarioDashboard: "Dashboard",
-        scenarioTheme: "Scrollbars",
-        scenarioMap: "Large map",
-        scenarioMobile: "Touch",
-        wasmRuntime: "LÖVE 11.5 · WebAssembly",
-        reload: "Reload",
-        fullscreen: "Fullscreen",
-        hintWindow: "title bar or content",
-        hintScroll: "scroll",
-        hintZoom: "zoom at cursor",
-        hintKeys: "active window",
-        demoNote:
-            "First launch downloads about 5 MB of WebAssembly. Later scenarios reuse the browser cache.",
-        featuresKicker: "Small surface, complete behavior",
-        featuresTitle: "The windowing pieces games actually need",
-        featuresLead:
-            "Keep rendering in LÖVE. Let the kit handle coordinates, focus, capture and viewport state.",
-        featureScrollTitle: "Scrolling that stays owned",
-        featureScrollText:
-            "Wheel, keyboard, content drag, scrollbar paging and touch are routed only to the focused viewport.",
-        featureZoomTitle: "Cursor-centered zoom",
-        featureZoomText:
-            "Zoom keeps the content point under the cursor stable and clamps cleanly at content boundaries.",
-        featureFloatTitle: "Floating windows",
-        featureFloatText:
-            "Draggable title bars, responsive constraints, themed chrome and independent content spaces.",
-        featureStackTitle: "Focus and layers",
-        featureStackText:
-            "Deterministic z-order, raise-on-focus and mouse or touch capture across overlapping windows.",
-        featureTouchTitle: "Touch and high-DPI",
-        featureTouchText:
-            "Independent multi-touch ownership, orientation changes and consistent DPI coordinate handling.",
-        featureStateTitle: "Serializable state",
-        featureStateText:
-            "Save and restore position, dimensions, scrolling and zoom with reasoned change callbacks.",
-        examplesKicker: "Copyable, runnable modules",
-        examplesTitle: "Start with a scenario, then keep only what you need",
-        examplesLead:
-            "Each example is a regular Lua module with the full callback bridge. Run it locally or inspect the exact source from the site.",
-        browseExamples: "Browse all example source →",
-        exampleMinimal: "Minimal integration",
-        exampleInventory: "Floating inventory",
-        exampleDashboard: "Multi-window dashboard",
-        exampleCulling: "Large-map culling",
-        exampleMobile: "Mobile diagnostics",
-        ctaKicker: "Ready for a new LÖVE project",
-        ctaTitle: "Clone it, run it, shape it into your own UI.",
-        downloadRelease: "Download release",
-        quickStart: "Quick start",
-        poweredBy: "Browser build powered by",
+const repository = "https://github.com/SMETAHA/love2d-window-kit";
+
+const examples = [
+    {
+        id: "navigation-lab",
+        name: "Navigation lab",
+        note: "New in 1.1",
+        description:
+            "Animated targets, kinetic drag, pinch zoom and constrained corner resizing in one focused example.",
+        controls: [
+            "Drag + release",
+            "Ctrl + wheel",
+            "1–3 targets",
+            "Home reset",
+            "Corner resize",
+        ],
+        command: "love . --example=navigation-lab",
+        source: "examples/navigation_lab.lua",
+        ratio: "118 / 76",
     },
-    ru: {
-        navDemo: "Демо",
-        navFeatures: "Возможности",
-        navExamples: "Примеры",
-        navApi: "API",
-        heroTitle:
-            "Окна внутри игры.<br><span>Без громоздкого GUI-фреймворка.</span>",
-        heroLead:
-            "Компактный набор для прокручиваемых областей, зума под курсором, плавающих окон, слоёв ввода и сенсорного управления.",
-        runDemo: "Запустить демо",
-        viewSource: "Открыть код",
-        metaApi: "стабильный API",
-        metaExamples: "готовых примеров",
-        metaChecks: "тестовых сценариев",
-        demoKicker: "Собрано прямо из репозитория",
-        demoTitle: "Настоящая Lua-библиотека работает в браузере",
-        demoLead:
-            "WebAssembly-сборка использует те же модули, что входят в релиз. Выберите сценарий и попробуйте управление.",
-        scenarioShowcase: "Общее демо",
-        scenarioInventory: "Инвентарь",
-        scenarioDashboard: "Панели",
-        scenarioTheme: "Скроллбары",
-        scenarioMap: "Большая карта",
-        scenarioMobile: "Тач",
-        wasmRuntime: "LÖVE 11.5 · WebAssembly",
-        reload: "Перезапуск",
-        fullscreen: "На весь экран",
-        hintWindow: "заголовок или контент",
-        hintScroll: "прокрутка",
-        hintZoom: "зум под курсором",
-        hintKeys: "активное окно",
-        demoNote:
-            "При первом запуске загрузится около 5 МБ WebAssembly. Остальные сценарии возьмут runtime из кэша браузера.",
-        featuresKicker: "Компактный API, законченное поведение",
-        featuresTitle: "Именно те оконные механики, которые нужны играм",
-        featuresLead:
-            "Рендеринг остаётся в LÖVE, а библиотека берёт на себя координаты, фокус, захват ввода и состояние viewport.",
-        featureScrollTitle: "Изолированная прокрутка",
-        featureScrollText:
-            "Колесо, клавиатура, drag-to-scroll, скроллбары и тач направляются только в активную область.",
-        featureZoomTitle: "Зум под курсором",
-        featureZoomText:
-            "Точка контента под курсором остаётся на месте, а границы корректно ограничиваются.",
-        featureFloatTitle: "Плавающие окна",
-        featureFloatText:
-            "Перетаскиваемые заголовки, адаптивные ограничения, темы и независимые области контента.",
-        featureStackTitle: "Фокус и слои",
-        featureStackText:
-            "Предсказуемый z-order, поднятие при фокусе и захват мыши или касаний в перекрывающихся окнах.",
-        featureTouchTitle: "Тач и high-DPI",
-        featureTouchText:
-            "Независимый multi-touch, смена ориентации и согласованные координаты при масштабировании DPI.",
-        featureStateTitle: "Сохранение состояния",
-        featureStateText:
-            "Сохраняйте позицию, размеры, прокрутку и зум; получайте callbacks с причиной изменения.",
-        examplesKicker: "Готовые модули для копирования",
-        examplesTitle: "Начните со сценария и оставьте только нужное",
-        examplesLead:
-            "Каждый пример — обычный Lua-модуль с полным мостом callbacks. Его можно запустить локально или изучить прямо с сайта.",
-        browseExamples: "Посмотреть исходники всех примеров →",
-        exampleMinimal: "Минимальная интеграция",
-        exampleInventory: "Плавающий инвентарь",
-        exampleDashboard: "Панель с несколькими окнами",
-        exampleCulling: "Отсечение большой карты",
-        exampleMobile: "Мобильная диагностика",
-        ctaKicker: "Готово для нового проекта LÖVE",
-        ctaTitle: "Клонируйте, запустите и соберите свой интерфейс.",
-        downloadRelease: "Скачать релиз",
-        quickStart: "Быстрый старт",
-        poweredBy: "Браузерная сборка работает на",
+    {
+        id: "showcase",
+        name: "Full showcase",
+        note: "Two viewports",
+        description:
+            "The default project with a fullscreen canvas, a floating window, focus routing and saved viewport state.",
+        controls: ["Drag", "Wheel", "Ctrl + wheel", "S save", "L restore"],
+        command: "love .",
+        source: "main.lua",
+        ratio: "4 / 3",
     },
-};
+    {
+        id: "minimal",
+        name: "Minimal setup",
+        note: "Start here",
+        description:
+            "The smallest complete integration, including the LÖVE callback bridge and one scrollable viewport.",
+        controls: ["Drag", "Wheel", "Ctrl + wheel", "Arrow keys"],
+        command: "love . --minimal",
+        source: "examples/minimal.lua",
+        ratio: "4 / 3",
+    },
+    {
+        id: "fullscreen-canvas",
+        name: "Fullscreen canvas",
+        note: "Pan and zoom",
+        description:
+            "A large editor-style canvas with cursor-centered zoom and visible-range drawing.",
+        controls: ["Drag canvas", "Wheel", "Ctrl + wheel", "+ / −"],
+        command: "love . --example=fullscreen-canvas",
+        source: "examples/fullscreen_canvas.lua",
+        ratio: "4 / 3",
+    },
+    {
+        id: "floating-inventory",
+        name: "Floating inventory",
+        note: "Game UI",
+        description:
+            "An inventory window above a world viewport. Capture prevents the background from moving during UI gestures.",
+        controls: ["Drag title", "Drag slots", "Wheel", "Click to focus"],
+        command: "love . --example=floating-inventory",
+        source: "examples/floating_inventory.lua",
+        ratio: "4 / 3",
+    },
+    {
+        id: "multi-window-dashboard",
+        name: "Window dashboard",
+        note: "Layers and focus",
+        description:
+            "Overlapping tools demonstrate deterministic z-order, raise-on-focus and isolated content spaces.",
+        controls: ["Click a panel", "Drag title", "Scroll panel", "Arrow keys"],
+        command: "love . --example=multi-window-dashboard",
+        source: "examples/multi_window_dashboard.lua",
+        ratio: "118 / 76",
+    },
+    {
+        id: "themed-scrollbars",
+        name: "Themed scrollbars",
+        note: "Visual options",
+        description:
+            "Custom frame, track and thumb colors with hover, paging, minimum thumb size and auto-hide.",
+        controls: ["Wheel", "Drag thumb", "Click track", "Wait for fade"],
+        command: "love . --example=themed-scrollbars",
+        source: "examples/themed_scrollbars.lua",
+        ratio: "4 / 3",
+    },
+    {
+        id: "state-callbacks",
+        name: "State and callbacks",
+        note: "Persistence",
+        description:
+            "Save and restore a viewport while inspecting the reasons emitted by scroll and zoom callbacks.",
+        controls: ["Move viewport", "S save", "L restore", "Watch events"],
+        command: "love . --example=state-callbacks",
+        source: "examples/state_callbacks.lua",
+        ratio: "4 / 3",
+    },
+    {
+        id: "large-map-culling",
+        name: "Large map culling",
+        note: "20k × 20k",
+        description:
+            "A huge virtual tile map that converts visible bounds into a small draw range each frame.",
+        controls: ["Drag map", "Wheel", "Ctrl + wheel", "Watch tile count"],
+        command: "love . --example=large-map-culling",
+        source: "examples/large_map_culling.lua",
+        ratio: "4 / 3",
+    },
+    {
+        id: "mobile",
+        name: "Touch diagnostics",
+        note: "DPI and orientation",
+        description:
+            "A diagnostic scene for logical coordinates, high-DPI rendering, multi-touch ownership and resize behavior.",
+        controls: [
+            "One-finger pan",
+            "Two-finger pinch",
+            "Rotate device",
+            "Resize browser",
+        ],
+        command: "love . --mobile-test",
+        source: "examples/mobile_test.lua",
+        ratio: "4 / 3",
+    },
+];
 
-const languageButton = document.querySelector("#language-toggle");
-const scenarioName = document.querySelector("#scenario-name");
-const demoFrame = document.querySelector("#demo-frame");
-const demoViewport = document.querySelector("#demo-viewport");
-const scenarioTabs = [...document.querySelectorAll(".scenario-tab")];
+const byId = new Map(examples.map((example) => [example.id, example]));
+const list = document.querySelector("#example-list");
+const frame = document.querySelector("#demo-frame");
+const frameWrap = document.querySelector("#demo-frame-wrap");
+const nameNode = document.querySelector("#example-name");
+const descriptionNode = document.querySelector("#example-description");
+const controlsNode = document.querySelector("#example-controls");
+const commandNode = document.querySelector("#example-command");
+const sourceNode = document.querySelector("#example-source");
+const copyButton = document.querySelector("#copy-command");
+let activeId;
 
-let language =
-    localStorage.getItem("window-kit-language") ||
-    (navigator.language.toLowerCase().startsWith("ru") ? "ru" : "en");
-let activeScenario = "showcase";
+for (const [index, example] of examples.entries()) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "example-option";
+    button.dataset.example = example.id;
+    button.innerHTML = `
+        <span class="number">${String(index + 1).padStart(2, "0")}</span>
+        <span><strong>${example.name}</strong><small>${example.note}</small></span>
+    `;
+    button.addEventListener("click", () => selectExample(example.id, true));
+    list.append(button);
+}
 
-function translate(lang) {
-    language = lang;
-    document.documentElement.lang = lang;
-    document.querySelectorAll("[data-i18n]").forEach((node) => {
-        const value = translations[lang][node.dataset.i18n];
-        if (value !== undefined) node.innerHTML = value;
-    });
-    languageButton.textContent = lang === "en" ? "RU" : "EN";
-    languageButton.setAttribute(
-        "aria-label",
-        lang === "en" ? "Switch to Russian" : "Переключить на английский",
+function demoUrl(id, reload = false) {
+    const query = new URLSearchParams({ scenario: id });
+    if (reload) query.set("reload", Date.now().toString());
+    return `demo/?${query}`;
+}
+
+function selectExample(id, updateUrl = false, reload = false) {
+    const example = byId.get(id) || examples[0];
+    activeId = example.id;
+    nameNode.textContent = example.name;
+    descriptionNode.textContent = example.description;
+    commandNode.textContent = example.command;
+    sourceNode.href = `${repository}/blob/main/${example.source}`;
+    frameWrap.style.aspectRatio = example.ratio;
+    controlsNode.replaceChildren(
+        ...example.controls.map((control) => {
+            const item = document.createElement("span");
+            item.textContent = control;
+            return item;
+        }),
     );
-    localStorage.setItem("window-kit-language", lang);
-    updateScenarioLabel();
-}
 
-function updateScenarioLabel() {
-    const tab = scenarioTabs.find(
-        (item) => item.dataset.scenario === activeScenario,
-    );
-    if (tab) scenarioName.textContent = tab.textContent;
-}
+    for (const button of list.querySelectorAll(".example-option")) {
+        const active = button.dataset.example === example.id;
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-pressed", String(active));
+    }
 
-function scenarioUrl(scenario) {
-    return scenario === "showcase"
-        ? "demo/"
-        : `demo/?scenario=${encodeURIComponent(scenario)}`;
-}
+    if (reload || !frame.src || !frame.src.includes(`scenario=${example.id}`)) {
+        frame.src = demoUrl(example.id, reload);
+    }
 
-function selectScenario(tab) {
-    activeScenario = tab.dataset.scenario;
-    scenarioTabs.forEach((item) => {
-        const selected = item === tab;
-        item.classList.toggle("active", selected);
-        item.setAttribute("aria-selected", String(selected));
-    });
-    demoViewport.style.aspectRatio = tab.dataset.ratio || "4 / 3";
-    demoFrame.src = scenarioUrl(activeScenario);
-    updateScenarioLabel();
+    if (updateUrl) {
+        const url = new URL(location.href);
+        url.searchParams.set("example", example.id);
+        history.replaceState({ example: example.id }, "", url);
+    }
 }
-
-languageButton.addEventListener("click", () =>
-    translate(language === "en" ? "ru" : "en"),
-);
-scenarioTabs.forEach((tab) =>
-    tab.addEventListener("click", () => selectScenario(tab)),
-);
 
 document.querySelector("#reload-demo").addEventListener("click", () => {
-    demoFrame.src = scenarioUrl(activeScenario);
+    selectExample(activeId, false, true);
 });
 
 document
     .querySelector("#fullscreen-demo")
     .addEventListener("click", async () => {
         try {
-            await demoViewport.requestFullscreen();
-        } catch (error) {
-            console.warn("Fullscreen request was rejected", error);
+            await frameWrap.requestFullscreen();
+        } catch {
+            frame.focus();
         }
     });
 
-document.querySelector("#year").textContent = String(new Date().getFullYear());
+copyButton.addEventListener("click", async () => {
+    const original = copyButton.textContent;
+    try {
+        await navigator.clipboard.writeText(commandNode.textContent);
+        copyButton.textContent = "Copied";
+    } catch {
+        copyButton.textContent = "Select command";
+    }
+    window.setTimeout(() => {
+        copyButton.textContent = original;
+    }, 1400);
+});
 
-const revealObserver = new IntersectionObserver(
-    (entries, observer) => {
-        entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add("revealed");
-                observer.unobserve(entry.target);
-            }
-        });
-    },
-    { threshold: 0.08 },
-);
+frame.addEventListener("load", () => frame.contentWindow?.focus());
 
-document
-    .querySelectorAll("[data-reveal]")
-    .forEach((node) => revealObserver.observe(node));
-translate(language);
+window.addEventListener("popstate", () => {
+    const requested = new URLSearchParams(location.search).get("example");
+    selectExample(requested, false);
+});
+
+const requested = new URLSearchParams(location.search).get("example");
+selectExample(requested, false);

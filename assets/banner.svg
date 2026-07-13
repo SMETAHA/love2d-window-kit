@@ -56,7 +56,7 @@
     <text x="0" y="121" fill="#8391b4" font-family="Inter,Segoe UI,sans-serif" font-size="20">Layered input routing and touch support for LÖVE2D</text>
     <g transform="translate(0 154)" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="16">
       <rect width="170" height="42" rx="21" fill="#ff4f8b" fill-opacity=".14" stroke="#ff4f8b"/>
-      <text x="85" y="27" text-anchor="middle" fill="#ff9cbd">API 1.0.0</text>
+      <text x="85" y="27" text-anchor="middle" fill="#ff9cbd">API 1.1.0</text>
       <rect x="188" width="170" height="42" rx="21" fill="#42d9ff" fill-opacity=".12" stroke="#42d9ff"/>
       <text x="273" y="27" text-anchor="middle" fill="#8be8ff">LÖVE 11.5</text>
     </g>
