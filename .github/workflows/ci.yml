@@ -10,7 +10,7 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install test dependencies
         run: |
@@ -37,10 +37,10 @@ jobs:
 
       - name: Build distributable .love archive
         run: |
-          zip -9 -r WindowManager-template.love . \
+          zip -9 -r love2d-window-kit.love . \
             -x '.git/*' '.github/*' 'tests/*' 'scripts/*' '*.zip'
 
       - uses: actions/upload-artifact@v4
         with:
-          name: WindowManager-template
-          path: WindowManager-template.love
+          name: love2d-window-kit
+          path: love2d-window-kit.love

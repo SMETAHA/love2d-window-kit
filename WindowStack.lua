@@ -15,7 +15,8 @@ function WindowStack.new()
         activeEntry = nil,
         mouseCaptureEntry = nil,
         mouseCaptureButton = nil,
-        touchCaptures = {}
+        touchCaptures = {},
+        blockedTouchIds = {}
     }, WindowStack)
 end
 
@@ -68,9 +69,8 @@ function WindowStack:add(window, options)
     table.insert(self.entries, insertAt, entry)
     self.byWindow[window] = entry
     if entry.id then self.byId[entry.id] = entry end
-    if entry.modal and entry.visible and entry.enabled and entry.focusable then
-        self:_releaseBlockedCaptures()
-        self:_setActiveEntry(entry)
+    if entry.modal and entry.visible and entry.enabled then
+        self:_reconcileModalBoundary(entry)
     end
     return window
 end
@@ -150,6 +150,7 @@ function WindowStack:setState(state)
         local orderB = savedOrder[b] or fallbackOffset + originalOrder[b]
         return orderA < orderB
     end)
+    self:_reconcileModalBoundary()
 
     if state.active ~= nil then
         assert(type(state.active) == "string", "state.active must be a string or nil")
@@ -214,6 +215,18 @@ function WindowStack:_releaseBlockedCaptures()
     for entry in pairs(blocked) do self:_releaseEntry(entry) end
 end
 
+function WindowStack:_reconcileModalBoundary(preferredEntry)
+    self:_releaseBlockedCaptures()
+    if self.activeEntry and not self:_entryAllowedByModal(self.activeEntry) then
+        self:_setActiveEntry(nil)
+    end
+    if preferredEntry and preferredEntry.modal and preferredEntry.visible
+       and preferredEntry.enabled and preferredEntry.focusable
+       and self:_entryAllowedByModal(preferredEntry) then
+        self:_setActiveEntry(preferredEntry)
+    end
+end
+
 function WindowStack:_setActiveEntry(entry)
     if entry == self.activeEntry then return end
 
@@ -265,6 +278,7 @@ function WindowStack:bringToFront(window)
         end
     end
     table.insert(self.entries, insertAt, entry)
+    self:_reconcileModalBoundary()
     return true
 end
 
@@ -286,6 +300,7 @@ function WindowStack:sendToBack(window)
         end
     end
     table.insert(self.entries, insertAt, entry)
+    self:_reconcileModalBoundary()
     return true
 end
 
@@ -351,6 +366,9 @@ function WindowStack:setFocusable(window, focusable)
     if not entry then return false end
     entry.focusable = not not focusable
     if not entry.focusable and self.activeEntry == entry then self:_setActiveEntry(nil) end
+    if entry.modal and entry.visible and entry.enabled then
+        self:_reconcileModalBoundary(entry)
+    end
     return true
 end
 
@@ -358,11 +376,13 @@ function WindowStack:setModal(window, modal)
     local entry = self.byWindow[window]
     if not entry then return false end
     entry.modal = not not modal
-    if entry.modal and entry.visible and entry.enabled and entry.focusable then
-        self:_releaseBlockedCaptures()
-        self:_setActiveEntry(entry)
+    if entry.modal and entry.visible and entry.enabled then
+        self:_reconcileModalBoundary(entry)
     elseif not entry.modal and self.activeEntry == nil then
+        self:_reconcileModalBoundary()
         self:focusTop()
+    else
+        self:_reconcileModalBoundary()
     end
     return true
 end
@@ -452,12 +472,13 @@ function WindowStack:wheelmoved(x, y)
 end
 
 function WindowStack:touchpressed(id, x, y, dx, dy, pressure)
-    if self.touchCaptures[id] then return true end
+    if self.touchCaptures[id] or self.blockedTouchIds[id] then return true end
 
     local entry, blocked, modalEntry = self:_dispatchTop(
         "touchpressed", id, x, y, dx, dy, pressure)
     if not entry then
         if blocked and modalEntry and modalEntry.focusable then self:_setActiveEntry(modalEntry) end
+        if blocked then self.blockedTouchIds[id] = true end
         return blocked
     end
 
@@ -468,7 +489,7 @@ end
 
 function WindowStack:touchmoved(id, x, y, dx, dy, pressure)
     local entry = self.touchCaptures[id]
-    if not entry then return false end
+    if not entry then return self.blockedTouchIds[id] == true end
 
     local handler = entry.window.touchmoved
     if type(handler) == "function" then
@@ -479,7 +500,11 @@ end
 
 function WindowStack:touchreleased(id, x, y, dx, dy, pressure)
     local entry = self.touchCaptures[id]
-    if not entry then return false end
+    if not entry then
+        local blocked = self.blockedTouchIds[id] == true
+        self.blockedTouchIds[id] = nil
+        return blocked
+    end
 
     self.touchCaptures[id] = nil
     local handler = entry.window.touchreleased
@@ -551,9 +576,10 @@ function WindowStack:setVisible(window, visible)
     if not entry then return false end
     entry.visible = not not visible
     if not entry.visible then self:_releaseEntry(entry) end
-    if entry.visible and entry.modal and entry.enabled and entry.focusable then
-        self:_releaseBlockedCaptures()
-        self:_setActiveEntry(entry)
+    if entry.visible and entry.modal and entry.enabled then
+        self:_reconcileModalBoundary(entry)
+    else
+        self:_reconcileModalBoundary()
     end
     return true
 end
@@ -563,9 +589,10 @@ function WindowStack:setEnabled(window, enabled)
     if not entry then return false end
     entry.enabled = not not enabled
     if not entry.enabled then self:_releaseEntry(entry) end
-    if entry.enabled and entry.modal and entry.visible and entry.focusable then
-        self:_releaseBlockedCaptures()
-        self:_setActiveEntry(entry)
+    if entry.enabled and entry.modal and entry.visible then
+        self:_reconcileModalBoundary(entry)
+    else
+        self:_reconcileModalBoundary()
     end
     return true
 end
@@ -600,6 +627,7 @@ function WindowStack:cancelInput()
     self.mouseCaptureEntry = nil
     self.mouseCaptureButton = nil
     self.touchCaptures = {}
+    self.blockedTouchIds = {}
     for _, entry in ipairs(self.entries) do
         if type(entry.window.cancelInput) == "function" then
             entry.window:cancelInput()
@@ -623,6 +651,7 @@ function WindowStack:remove(window)
             break
         end
     end
+    self:_reconcileModalBoundary()
     return true
 end
 
@@ -630,6 +659,7 @@ function WindowStack:clear()
     while #self.entries > 0 do
         self:remove(self.entries[#self.entries].window)
     end
+    self.blockedTouchIds = {}
     return self
 end
 

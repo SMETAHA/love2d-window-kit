@@ -50,6 +50,10 @@
 | `trackpad` | — | Вложенные настройки precision touchpad |
 | `touchscreen` | — | Вложенные настройки жестов touchscreen |
 
+`wheel`, `keyboard` и `touch` отключают источник целиком. Вложенный
+`touchscreen.pan` управляет только pan одним пальцем и не отключает pinch, tap,
+long press или touch-управление floating-окном.
+
 ### Настройки touchpad
 
 `smooth`, `sensitivity`, `invertX`, `invertY`, `friction`, `maxVelocity`, `zoomMode`, `zoomSensitivity`.
@@ -166,7 +170,7 @@ stack:add(window, options)
 
 Передавайте ему `mousepressed`, `mousereleased`, `mousemoved`, `wheelmoved`, touch callbacks, keyboard callbacks, `textinput` и `textedited`. Mouse-жест принадлежит одному окну до release; каждый touch ID захватывается независимо. Если приложение передаёт native touch callbacks, пропускайте mouse-события с `istouch == true`: LÖVE так помечает mouse-события, созданные касанием, и обработка обоих путей продублирует жест.
 
-Состояние stack содержит только записи со стабильными ID. Если окно реализует `getState` и `setState`, его состояние вкладывается и восстанавливается автоматически. Активация modal-записи отменяет captures ниже modal boundary.
+Состояние stack содержит только записи со стабильными ID. Если окно реализует `getState` и `setState`, его состояние вкладывается и восстанавливается автоматически. Активация modal-записи, включая нефокусируемую, и изменение её слоя отменяют captures ниже modal boundary. Touch, заблокированный modal на `touchpressed`, остаётся поглощённым до соответствующего `touchreleased`.
 
 ## SystemWindow
 
