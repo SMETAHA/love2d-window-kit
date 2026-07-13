@@ -125,7 +125,7 @@ const examples = [
 ];
 
 const byId = new Map(examples.map((example) => [example.id, example]));
-const list = document.querySelector("#example-list");
+const select = document.querySelector("#example-select");
 const frame = document.querySelector("#demo-frame");
 const frameWrap = document.querySelector("#demo-frame-wrap");
 const nameNode = document.querySelector("#example-name");
@@ -136,17 +136,11 @@ const sourceNode = document.querySelector("#example-source");
 const copyButton = document.querySelector("#copy-command");
 let activeId;
 
-for (const [index, example] of examples.entries()) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "example-option";
-    button.dataset.example = example.id;
-    button.innerHTML = `
-        <span class="number">${String(index + 1).padStart(2, "0")}</span>
-        <span><strong>${example.name}</strong><small>${example.note}</small></span>
-    `;
-    button.addEventListener("click", () => selectExample(example.id, true));
-    list.append(button);
+for (const example of examples) {
+    const option = document.createElement("option");
+    option.value = example.id;
+    option.textContent = `${example.name} — ${example.note}`;
+    select.append(option);
 }
 
 function demoUrl(id, reload = false) {
@@ -163,6 +157,7 @@ function selectExample(id, updateUrl = false, reload = false) {
     commandNode.textContent = example.command;
     sourceNode.href = `${repository}/blob/main/${example.source}`;
     frameWrap.style.aspectRatio = example.ratio;
+    select.value = example.id;
     controlsNode.replaceChildren(
         ...example.controls.map((control) => {
             const item = document.createElement("span");
@@ -170,12 +165,6 @@ function selectExample(id, updateUrl = false, reload = false) {
             return item;
         }),
     );
-
-    for (const button of list.querySelectorAll(".example-option")) {
-        const active = button.dataset.example === example.id;
-        button.classList.toggle("active", active);
-        button.setAttribute("aria-pressed", String(active));
-    }
 
     if (reload || !frame.src || !frame.src.includes(`scenario=${example.id}`)) {
         frame.src = demoUrl(example.id, reload);
@@ -187,6 +176,8 @@ function selectExample(id, updateUrl = false, reload = false) {
         history.replaceState({ example: example.id }, "", url);
     }
 }
+
+select.addEventListener("change", () => selectExample(select.value, true));
 
 document.querySelector("#reload-demo").addEventListener("click", () => {
     selectExample(activeId, false, true);

@@ -3,205 +3,122 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/SMETAHA/love2d-window-kit/releases/latest"><img src="https://img.shields.io/github/v/release/SMETAHA/love2d-window-kit?color=ec4899" alt="Latest release"></a>
   <a href="https://github.com/SMETAHA/love2d-window-kit/actions/workflows/ci.yml"><img src="https://github.com/SMETAHA/love2d-window-kit/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/SMETAHA/love2d-window-kit/actions/workflows/pages.yml"><img src="https://github.com/SMETAHA/love2d-window-kit/actions/workflows/pages.yml/badge.svg" alt="GitHub Pages"></a>
   <img src="https://img.shields.io/badge/LÖVE-11.5-EA316E?logo=love&logoColor=white" alt="LÖVE 11.5">
-  <img src="https://img.shields.io/badge/API-1.2.0-8B5CF6" alt="API 1.2.0">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-22C55E" alt="MIT License"></a>
 </p>
 
 <p align="center">
-  A lightweight window and viewport toolkit for <strong>LÖVE2D</strong> with scrolling,
-  animated navigation, precision-trackpad scrolling, touchscreen gestures,
-  resizable floating windows and modal focus routing.
+  Small Lua modules for scrollable and zoomable viewports, floating windows,
+  input routing, precision trackpads and touchscreen gestures in LÖVE2D.
 </p>
 
 <p align="center">
-  <a href="https://smetaha.github.io/love2d-window-kit/">Live Demo</a> ·
-  <a href="docs/API.en.md">API Reference</a> ·
-  <a href="#runnable-examples">Examples</a> ·
+  <a href="https://smetaha.github.io/love2d-window-kit/"><strong>Live examples</strong></a> ·
+  <a href="docs/API.en.md">API</a> ·
   <a href="docs/RECIPES.md">Recipes</a> ·
-  <a href="docs/MOBILE_TEST.en.md">Mobile Testing</a> ·
   <a href="docs/README.ru.md">Русская версия</a>
 </p>
 
-## Live browser demo
+## What it includes
 
-Open the [interactive GitHub Pages site](https://smetaha.github.io/love2d-window-kit/) to run the actual Lua library in your browser. Pick an example, read the controls, and launch the matching LÖVE 11.5 `love.js` build directly on the page.
+- Scroll, drag, keyboard and kinetic navigation.
+- Cursor-anchored zoom and animated camera helpers.
+- Smooth fractional input for precision touchpads.
+- One-finger pan, pinch + two-finger pan, double tap and long press.
+- Draggable and resizable floating windows with focus and capture.
+- Layered stacks, modal routing, styled scrollbars and saved state.
 
-The Pages workflow builds directly from the repository on every push to `main`; compiled WebAssembly files are deployment artifacts and do not need to be committed.
-
-## Why this kit?
-
-LÖVE gives you a powerful rendering and input layer, but it intentionally does not prescribe a windowing model. LÖVE Window Kit adds a compact, game-friendly abstraction without turning your project into a full desktop GUI framework.
-
-| Capability | Included |
-| --- | :---: |
-| Wheel, keyboard, drag, touch and kinetic scrolling | ✓ |
-| Smooth fractional-delta scrolling for precision touchpads | ✓ |
-| Zoom anchored under the mouse cursor | ✓ |
-| Pinch + two-finger pan, double tap and long press | ✓ |
-| Draggable, constrained and resizable floating windows | ✓ |
-| Layered z-order, focus, stable IDs and modal routing | ✓ |
-| Mouse capture and independent multi-touch capture | ✓ |
-| Styled scrollbars with paging, hover, fade and minimum thumb size | ✓ |
-| Responsive resize, high-DPI and orientation handling | ✓ |
-| Viewport/stack state save and scroll/zoom/layout callbacks | ✓ |
-| Lua 5.1 tests and real LÖVE 11.5 CI smoke run | ✓ |
+The runtime has no third-party dependencies and remains compatible with the Lua
+5.1 / LuaJIT semantics used by LÖVE.
 
 ## Quick start
 
-Copy `WindowManager.lua`, `WindowStack.lua` and `SystemWindow.lua` into your LÖVE project:
+Copy `WindowManager.lua`, `WindowStack.lua` and `SystemWindow.lua` into your
+project. Create a viewport and add it to a stack:
 
 ```lua
 local WindowManager = require("WindowManager")
 local WindowStack = require("WindowStack")
 
-local windows
+local windows = WindowStack.new()
+local map = WindowManager.new({
+    contentWidth = 4200,
+    contentHeight = 2800,
+    minZoom = 0.35,
+    maxZoom = 3,
+    inertia = true,
+    input = {
+        trackpad = { smooth = true },
+        touchscreen = { doubleTap = true, twoFingerPan = true }
+    }
+})
 
-function love.load()
-    windows = WindowStack.new()
-
-    local inventory = WindowManager.new({
-        floating = true,
-        x = 100,
-        y = 80,
-        width = 600,
-        height = 400,
-        title = "Inventory",
-        draggable = true,
-        resizable = true,
-        inertia = true,
-        contentWidth = 2000,
-        contentHeight = 1500,
-        input = {
-            trackpad = { smooth = true },
-            touchscreen = { doubleTap = true, twoFingerPan = true }
-        },
-        scrollbar = { autoHide = true, minThumbSize = 28 }
-    })
-
-    windows:add(inventory, {
-        id = "inventory",
-        layer = 100,
-        draw = function(scrollX, scrollY, visibleWidth, visibleHeight)
-            -- Draw content in content-space coordinates.
-        end
-    })
-    windows:focus(inventory)
-end
+windows:add(map, {
+    id = "map",
+    draw = function(scrollX, scrollY, visibleWidth, visibleHeight)
+        -- Draw in content-space coordinates here.
+    end
+})
 
 function love.update(dt) windows:update(dt) end
 function love.draw() windows:draw() end
-function love.resize(w, h) windows:resize(w, h) end
-function love.mousepressed(x, y, button, istouch, presses)
-    if not istouch then windows:mousepressed(x, y, button, false, presses) end
-end
-function love.mousereleased(x, y, button, istouch, presses)
-    if not istouch then windows:mousereleased(x, y, button, false, presses) end
-end
-function love.mousemoved(x, y, dx, dy, istouch)
-    if not istouch then windows:mousemoved(x, y, dx, dy, false) end
-end
 function love.wheelmoved(...) windows:wheelmoved(...) end
+function love.touchpressed(...) windows:touchpressed(...) end
+function love.touchmoved(...) windows:touchmoved(...) end
+function love.touchreleased(...) windows:touchreleased(...) end
 ```
 
-Forward touch, keyboard and text callbacks in the same way. When native touch callbacks are forwarded, ignore mouse callbacks whose `istouch` flag is true to avoid handling one physical touch twice. See [`examples/support.lua`](examples/support.lua) for the complete bridge.
+Use [`examples/minimal.lua`](examples/minimal.lua) for the complete mouse,
+keyboard, touch, resize and focus callback bridge. When native touch callbacks
+are forwarded, ignore mouse events with `istouch == true` so a touch is not
+processed twice.
 
-Center a target smoothly or reveal a content rectangle without writing camera math:
+## Modules
+
+| Module | Responsibility |
+| --- | --- |
+| `WindowManager` | One viewport: content coordinates, scroll, zoom, gestures and chrome |
+| `WindowStack` | Multiple viewports: layers, focus, capture, modal routing and state |
+| `SystemWindow` | The real LÖVE window: size, fullscreen, DPI and platform flags |
+
+## Live examples
+
+The [demo site](https://smetaha.github.io/love2d-window-kit/) runs the real Lua
+project through `love.js`. The same scenarios can be launched locally:
+
+| Scenario | Command | Shows |
+| --- | --- | --- |
+| Minimal | `love . --minimal` | Smallest complete integration |
+| Navigation lab | `love . --example=navigation-lab` | Touchpad, pinch + pan, tap/hold and touch resize |
+| Fullscreen canvas | `love . --example=fullscreen-canvas` | Large pan-and-zoom canvas |
+| Floating inventory | `love . --example=floating-inventory` | Game UI above a world viewport |
+| Window dashboard | `love . --example=multi-window-dashboard` | Layers, focus and overlapping windows |
+| Themed scrollbars | `love . --example=themed-scrollbars` | Paging, hover, fade and colors |
+| State and callbacks | `love . --example=state-callbacks` | Save/restore and event reasons |
+| Large map | `love . --example=large-map-culling` | Visible-range drawing on a 20k × 20k map |
+| Mobile diagnostics | `love . --mobile-test` | Touch IDs, logical DPI and orientation |
+| Full showcase | `love .` | Combined desktop demonstration |
+
+## Navigation helpers
 
 ```lua
-inventory:centerOn(player.x, player.y, { duration = 0.35, easing = "inOutQuad" })
-inventory:ensureVisible(item.x, item.y, item.w, item.h, {
+map:centerOn(player.x, player.y, {
+    duration = 0.35,
+    easing = "inOutQuad"
+})
+
+map:ensureVisible(item.x, item.y, item.w, item.h, {
     padding = 48,
     duration = 0.25
 })
 ```
 
-## Architecture
-
-```mermaid
-flowchart TD
-    L["LÖVE callbacks"] --> S["WindowStack"]
-    S --> F["Focus and capture"]
-    F --> V1["WindowManager viewport"]
-    F --> V2["Floating viewport"]
-    W["SystemWindow"] --> L
-```
-
-- **`WindowManager`** owns one viewport: bounds, content coordinates, zoom, scrolling and chrome.
-- **`WindowStack`** owns the collection: layers, z-order, focus and input capture.
-- **`SystemWindow`** configures the actual OS window separately from in-game viewports.
-
-## Runnable examples
-
-Clone the repository and run any scenario from its root:
-
-```bash
-git clone https://github.com/SMETAHA/love2d-window-kit.git
-cd love2d-window-kit
-love . --example=multi-window-dashboard
-```
-
-| Scenario | Command | Demonstrates |
-| --- | --- | --- |
-| Minimal integration | `love . --minimal` | Smallest complete setup |
-| Fullscreen canvas | `love . --example=fullscreen-canvas` | Pan and cursor-centered zoom |
-| Floating inventory | `love . --example=floating-inventory` | Game inventory over a scrollable world |
-| Multi-window dashboard | `love . --example=multi-window-dashboard` | Overlap, focus, layers and bring-to-front |
-| Themed scrollbars | `love . --example=themed-scrollbars` | Theme colors, paging, hover and auto-hide |
-| State and callbacks | `love . --example=state-callbacks` | Save/load and event reasons |
-| Large map culling | `love . --example=large-map-culling` | A 20,000 × 20,000 tile map drawn by visible range |
-| Navigation lab | `love . --example=navigation-lab` | Smooth trackpad, pinch + pan, tap/hold and touch resize |
-| Mobile diagnostics | `love . --mobile-test` | Multi-touch, DPI and orientation |
-| Full showcase | `love .` | Combined desktop demonstration |
-
-Every scenario is a regular Lua module in [`examples/`](examples/), so it can also be used as copyable integration code.
-
-## Configuration at a glance
-
-```lua
-local viewport = WindowManager.new({
-    floating = true,
-    x = 120, y = 80,
-    width = 760, height = 520,
-    title = "Document",
-    draggable = true,
-    resizable = true,
-    resize = { minWidth = 420, minHeight = 280, border = 10 },
-    dragToScroll = true,
-    inertia = { enabled = true, friction = 7, minVelocity = 18 },
-    input = {
-        pinchZoom = true,
-        shiftWheelHorizontal = true,
-        trackpad = { smooth = true, friction = 14 },
-        touchscreen = {
-            panThreshold = 4,
-            twoFingerPan = true,
-            doubleTap = true,
-            doubleTapZoom = 2
-        }
-    },
-    contentWidth = 2400,
-    contentHeight = 1800,
-    zoom = 1,
-    minZoom = 0.5,
-    maxZoom = 4,
-    scrollbar = {
-        width = 14,
-        minThumbSize = 36,
-        pageStep = 0.85,
-        autoHide = true,
-        color = {0.25, 0.8, 1, 0.9}
-    },
-    callbacks = {
-        onScroll = function(x, y, oldX, oldY, source, reason) end,
-        onZoom = function(oldZoom, zoom, source, reason) end
-    }
-})
-```
-
-See the complete [`API reference`](docs/API.en.md) for themes, state persistence, stack options and callback contracts.
+See the [API reference](docs/API.en.md) for configuration, callbacks and exact
+method signatures. Mobile projects should also use the
+[device checklist](docs/MOBILE_TEST.en.md).
 
 ## Testing
 
@@ -209,18 +126,11 @@ See the complete [`API reference`](docs/API.en.md) for themes, state persistence
 sh scripts/run_tests.sh
 ```
 
-The suite covers geometry, input ownership, z-order, public API validation, graphics-stack recovery, high-DPI coordinates, orientation changes and every runnable example. GitHub Actions additionally downloads LÖVE 11.5, runs the project under Xvfb and builds a `.love` artifact.
-
-## Compatibility
-
-- LÖVE **11.5** is the primary target.
-- Runtime code remains compatible with Lua 5.1 / LuaJIT semantics used by LÖVE.
-- The original step-by-step API (`new()`, `load`, `setFloating`, `setFullscreen`) remains available.
-
-## Contributing
-
-Bug reports, focused pull requests and new example scenarios are welcome. Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) before submitting changes.
+The suite covers geometry, input ownership, touchpad momentum, touchscreen
+gestures, high-DPI coordinates, stack behavior and every runnable example. CI
+also runs the project with LÖVE 11.5 and builds the browser demo.
 
 ## License
 
-Released under the [MIT License](LICENSE).
+[MIT](LICENSE). Contributions and focused bug reports are welcome; see
+[CONTRIBUTING.md](CONTRIBUTING.md).
