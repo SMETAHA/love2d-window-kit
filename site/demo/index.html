@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+        />
+        <title>LÖVE Window Kit Demo</title>
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+            html,
+            body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                overflow: hidden;
+                background: #03050a;
+            }
+            body {
+                font-family: ui-sans-serif, system-ui, sans-serif;
+                color: #f5f5fa;
+            }
+            .stage {
+                position: relative;
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+            }
+            #canvas {
+                display: block;
+                width: 100%;
+                height: 100%;
+                border: 0;
+                background: #03050a;
+                visibility: hidden;
+                touch-action: none;
+            }
+            .loading {
+                position: absolute;
+                z-index: 4;
+                inset: 0;
+                display: grid;
+                place-items: center;
+                background:
+                    radial-gradient(
+                        circle at 50% 44%,
+                        rgba(139, 92, 246, 0.17),
+                        transparent 32%
+                    ),
+                    #050710;
+                transition:
+                    opacity 0.3s ease,
+                    visibility 0.3s ease;
+            }
+            .loading.hidden {
+                opacity: 0;
+                visibility: hidden;
+                pointer-events: none;
+            }
+            .loader-box {
+                width: min(320px, 72vw);
+                text-align: center;
+            }
+            .heart {
+                color: #ec4899;
+                font-size: 34px;
+                filter: drop-shadow(0 0 18px rgba(236, 72, 153, 0.45));
+            }
+            #status {
+                margin: 16px 0 13px;
+                color: #c5c8d2;
+                font-size: 13px;
+            }
+            .progress {
+                height: 3px;
+                overflow: hidden;
+                border-radius: 99px;
+                background: rgba(255, 255, 255, 0.08);
+            }
+            .progress::after {
+                display: block;
+                width: 45%;
+                height: 100%;
+                border-radius: inherit;
+                background: linear-gradient(90deg, #ec4899, #8b5cf6);
+                content: "";
+                animation: load 1.1s ease-in-out infinite alternate;
+            }
+            .scenario-badge {
+                position: absolute;
+                z-index: 3;
+                top: 10px;
+                left: 10px;
+                padding: 5px 8px;
+                border: 1px solid rgba(255, 255, 255, 0.14);
+                border-radius: 7px;
+                background: rgba(5, 7, 14, 0.72);
+                color: #c1c5d0;
+                font-size: 10px;
+                letter-spacing: 0.05em;
+                pointer-events: none;
+                backdrop-filter: blur(8px);
+            }
+            @keyframes load {
+                from {
+                    transform: translateX(-15%);
+                }
+                to {
+                    transform: translateX(135%);
+                }
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .progress::after {
+                    animation: none;
+                    width: 100%;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="stage">
+            <canvas
+                id="canvas"
+                width="1024"
+                height="768"
+                oncontextmenu="event.preventDefault()"
+            ></canvas>
+            <div class="scenario-badge" id="scenario-badge">SHOWCASE</div>
+            <div class="loading" id="loading">
+                <div class="loader-box">
+                    <div class="heart">♥</div>
+                    <p id="status">Downloading LÖVE runtime…</p>
+                    <div class="progress"></div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            const scenario =
+                new URLSearchParams(location.search).get("scenario") ||
+                "showcase";
+            const examples = new Set([
+                "fullscreen-canvas",
+                "floating-inventory",
+                "multi-window-dashboard",
+                "themed-scrollbars",
+                "state-callbacks",
+                "large-map-culling",
+            ]);
+            const argumentsList = ["./game.love"];
+
+            if (scenario === "minimal") argumentsList.push("--minimal");
+            else if (scenario === "mobile") argumentsList.push("--mobile-test");
+            else if (examples.has(scenario))
+                argumentsList.push(`--example=${scenario}`);
+
+            document.querySelector("#scenario-badge").textContent = scenario
+                .replaceAll("-", " ")
+                .toUpperCase();
+
+            const canvas = document.querySelector("#canvas");
+            const loading = document.querySelector("#loading");
+            const statusNode = document.querySelector("#status");
+
+            canvas.addEventListener(
+                "wheel",
+                (event) => event.preventDefault(),
+                { passive: false },
+            );
+            window.addEventListener(
+                "keydown",
+                (event) => {
+                    if (
+                        [
+                            "ArrowUp",
+                            "ArrowDown",
+                            "ArrowLeft",
+                            "ArrowRight",
+                            " ",
+                        ].includes(event.key)
+                    )
+                        event.preventDefault();
+                },
+                { passive: false },
+            );
+            window.addEventListener("load", () => window.focus());
+            window.addEventListener("pointerdown", () => window.focus());
+
+            var Module = {
+                arguments: argumentsList,
+                INITIAL_MEMORY: 16777216,
+                printErr: console.error.bind(console),
+                canvas,
+                setStatus(text) {
+                    if (text) {
+                        statusNode.textContent = text;
+                    } else if (Module.remainingDependencies === 0) {
+                        canvas.style.visibility = "visible";
+                        loading.classList.add("hidden");
+                    }
+                },
+                totalDependencies: 0,
+                remainingDependencies: 0,
+                monitorRunDependencies(left) {
+                    this.remainingDependencies = left;
+                    this.totalDependencies = Math.max(
+                        this.totalDependencies,
+                        left,
+                    );
+                    Module.setStatus(
+                        left
+                            ? `Preparing… (${this.totalDependencies - left}/${this.totalDependencies})`
+                            : "Starting LÖVE…",
+                    );
+                },
+            };
+
+            Module.setStatus("Downloading LÖVE runtime…");
+            window.onerror = function (event) {
+                Module.setStatus(
+                    "Could not start the demo. Check the browser console.",
+                );
+                Module.printErr(event);
+            };
+
+            function applicationLoad() {
+                Love(Module);
+            }
+        </script>
+        <script src="game.js"></script>
+        <script async src="love.js" onload="applicationLoad()"></script>
+    </body>
+</html>

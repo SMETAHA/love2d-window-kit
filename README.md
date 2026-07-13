@@ -4,6 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/SMETAHA/love2d-window-kit/actions/workflows/ci.yml"><img src="https://github.com/SMETAHA/love2d-window-kit/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/SMETAHA/love2d-window-kit/actions/workflows/pages.yml"><img src="https://github.com/SMETAHA/love2d-window-kit/actions/workflows/pages.yml/badge.svg" alt="GitHub Pages"></a>
   <img src="https://img.shields.io/badge/LÖVE-11.5-EA316E?logo=love&logoColor=white" alt="LÖVE 11.5">
   <img src="https://img.shields.io/badge/API-1.0.0-8B5CF6" alt="API 1.0.0">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-22C55E" alt="MIT License"></a>
@@ -15,12 +16,19 @@
 </p>
 
 <p align="center">
+  <a href="https://smetaha.github.io/love2d-window-kit/">Live Demo</a> ·
   <a href="docs/API.en.md">API Reference</a> ·
   <a href="#runnable-examples">Examples</a> ·
   <a href="docs/RECIPES.md">Recipes</a> ·
   <a href="docs/MOBILE_TEST.en.md">Mobile Testing</a> ·
   <a href="docs/README.ru.md">Русская версия</a>
 </p>
+
+## Live browser demo
+
+Open the [interactive GitHub Pages site](https://smetaha.github.io/love2d-window-kit/) to run the actual Lua library in your browser. The site uses a pinned LÖVE 11.5 `love.js` compatibility build and lets you switch between the showcase, floating inventory, multi-window dashboard, themed scrollbars, large-map culling and touch diagnostics.
+
+The Pages workflow builds directly from the repository on every push to `main`; compiled WebAssembly files are deployment artifacts and do not need to be committed.
 
 ## Why this kit?
 

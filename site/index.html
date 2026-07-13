@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#080a12" />
+        <meta
+            name="description"
+            content="LÖVE Window Kit — scrolling, zoom, floating windows, focus routing and touch support for LÖVE 11.5."
+        />
+        <title>LÖVE Window Kit — live browser demo</title>
+        <link
+            rel="icon"
+            href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%23080a12'/%3E%3Cpath d='M32 52C14 42 8 31 12 20c4-10 17-10 20-1 3-9 16-9 20 1 4 11-2 22-20 32Z' fill='%23ec4899'/%3E%3C/svg%3E"
+        />
+        <link rel="stylesheet" href="styles.css" />
+        <script src="app.js" defer></script>
+    </head>
+    <body>
+        <a class="skip-link" href="#main">Skip to content</a>
+
+        <header class="site-header">
+            <nav class="nav shell" aria-label="Main navigation">
+                <a class="brand" href="#top" aria-label="LÖVE Window Kit home">
+                    <span class="brand-mark" aria-hidden="true">♥</span>
+                    <span>Window Kit</span>
+                </a>
+
+                <div class="nav-links">
+                    <a href="#demo" data-i18n="navDemo">Live demo</a>
+                    <a href="#features" data-i18n="navFeatures">Features</a>
+                    <a href="#examples" data-i18n="navExamples">Examples</a>
+                    <a
+                        href="https://github.com/SMETAHA/love2d-window-kit/blob/main/docs/API.en.md"
+                        data-i18n="navApi"
+                        >API</a
+                    >
+                </div>
+
+                <div class="nav-actions">
+                    <button
+                        class="language-toggle"
+                        id="language-toggle"
+                        type="button"
+                        aria-label="Switch language"
+                    >
+                        RU
+                    </button>
+                    <a
+                        class="github-link"
+                        href="https://github.com/SMETAHA/love2d-window-kit"
+                        aria-label="Open repository on GitHub"
+                    >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path
+                                d="M12 .7A11.5 11.5 0 0 0 8.36 23.1c.58.1.79-.25.79-.56v-2.23c-3.22.7-3.9-1.37-3.9-1.37-.52-1.34-1.28-1.7-1.28-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.57-.3-5.27-1.29-5.27-5.7 0-1.26.45-2.29 1.18-3.1-.12-.3-.51-1.47.12-3.06 0 0 .97-.31 3.16 1.18a10.9 10.9 0 0 1 5.76 0c2.2-1.5 3.16-1.18 3.16-1.18.63 1.6.24 2.76.12 3.05.74.82 1.18 1.85 1.18 3.1 0 4.43-2.7 5.4-5.28 5.7.42.36.78 1.07.78 2.16v3.24c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .7Z"
+                            />
+                        </svg>
+                    </a>
+                </div>
+            </nav>
+        </header>
+
+        <main id="main">
+            <section class="hero shell" id="top">
+                <div class="hero-copy" data-reveal>
+                    <p class="eyebrow">
+                        <span class="pulse"></span> LÖVE 11.5 · Lua 5.1 · MIT
+                    </p>
+                    <h1 data-i18n="heroTitle">
+                        Windows inside your game.<br /><span
+                            >Without a GUI framework.</span
+                        >
+                    </h1>
+                    <p class="hero-lead" data-i18n="heroLead">
+                        A focused toolkit for scrollable viewports,
+                        cursor-centered zoom, draggable floating windows,
+                        layered input and touch.
+                    </p>
+
+                    <div class="hero-actions">
+                        <a
+                            class="button button-primary"
+                            href="#demo"
+                            data-i18n="runDemo"
+                            >Run the live demo</a
+                        >
+                        <a
+                            class="button button-secondary"
+                            href="https://github.com/SMETAHA/love2d-window-kit"
+                            data-i18n="viewSource"
+                            >View source</a
+                        >
+                    </div>
+
+                    <div class="hero-meta" aria-label="Project facts">
+                        <div>
+                            <strong>1.0.0</strong
+                            ><span data-i18n="metaApi">stable API</span>
+                        </div>
+                        <div>
+                            <strong>8+</strong
+                            ><span data-i18n="metaExamples"
+                                >runnable examples</span
+                            >
+                        </div>
+                        <div>
+                            <strong>13</strong
+                            ><span data-i18n="metaChecks">test scenarios</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="code-window" data-reveal>
+                    <div class="window-bar">
+                        <div class="traffic-lights">
+                            <span></span><span></span><span></span>
+                        </div>
+                        <span>inventory.lua</span>
+                        <span class="window-status">● ready</span>
+                    </div>
+                    <pre
+                        aria-label="Lua example"
+                    ><code><span class="code-keyword">local</span> WindowManager = <span class="code-call">require</span>(<span class="code-string">"WindowManager"</span>)
+
+<span class="code-keyword">local</span> inventory = WindowManager.<span class="code-call">new</span>({
+  floating = <span class="code-value">true</span>,
+  draggable = <span class="code-value">true</span>,
+  contentWidth = <span class="code-number">2000</span>,
+  contentHeight = <span class="code-number">1500</span>,
+  minZoom = <span class="code-number">0.5</span>,
+  maxZoom = <span class="code-number">4</span>,
+  scrollbar = {
+    autoHide = <span class="code-value">true</span>,
+    minThumbSize = <span class="code-number">28</span>
+  }
+})</code></pre>
+                    <div class="code-glow" aria-hidden="true"></div>
+                </div>
+            </section>
+
+            <section class="demo-section" id="demo">
+                <div class="shell">
+                    <div class="section-heading" data-reveal>
+                        <div>
+                            <p class="section-kicker" data-i18n="demoKicker">
+                                Compiled from the repository
+                            </p>
+                            <h2 data-i18n="demoTitle">
+                                The real Lua library, running in your browser
+                            </h2>
+                        </div>
+                        <p data-i18n="demoLead">
+                            The compatibility build uses WebAssembly and the
+                            same modules that ship in the release. Pick a
+                            scenario and interact with it.
+                        </p>
+                    </div>
+
+                    <div
+                        class="scenario-tabs"
+                        id="scenario-tabs"
+                        role="tablist"
+                        aria-label="Demo scenarios"
+                        data-reveal
+                    >
+                        <button
+                            class="scenario-tab active"
+                            type="button"
+                            role="tab"
+                            aria-selected="true"
+                            data-scenario="showcase"
+                            data-ratio="4 / 3"
+                            data-i18n="scenarioShowcase"
+                        >
+                            Showcase
+                        </button>
+                        <button
+                            class="scenario-tab"
+                            type="button"
+                            role="tab"
+                            aria-selected="false"
+                            data-scenario="floating-inventory"
+                            data-ratio="4 / 3"
+                            data-i18n="scenarioInventory"
+                        >
+                            Inventory
+                        </button>
+                        <button
+                            class="scenario-tab"
+                            type="button"
+                            role="tab"
+                            aria-selected="false"
+                            data-scenario="multi-window-dashboard"
+                            data-ratio="118 / 76"
+                            data-i18n="scenarioDashboard"
+                        >
+                            Dashboard
+                        </button>
+                        <button
+                            class="scenario-tab"
+                            type="button"
+                            role="tab"
+                            aria-selected="false"
+                            data-scenario="themed-scrollbars"
+                            data-ratio="4 / 3"
+                            data-i18n="scenarioTheme"
+                        >
+                            Scrollbars
+                        </button>
+                        <button
+                            class="scenario-tab"
+                            type="button"
+                            role="tab"
+                            aria-selected="false"
+                            data-scenario="large-map-culling"
+                            data-ratio="4 / 3"
+                            data-i18n="scenarioMap"
+                        >
+                            Large map
+                        </button>
+                        <button
+                            class="scenario-tab"
+                            type="button"
+                            role="tab"
+                            aria-selected="false"
+                            data-scenario="mobile"
+                            data-ratio="4 / 3"
+                            data-i18n="scenarioMobile"
+                        >
+                            Touch
+                        </button>
+                    </div>
+
+                    <div class="demo-card" data-reveal>
+                        <div class="demo-toolbar">
+                            <div class="demo-identity">
+                                <span class="live-dot"></span>
+                                <strong id="scenario-name">Showcase</strong>
+                                <span data-i18n="wasmRuntime"
+                                    >LÖVE 11.5 · WebAssembly</span
+                                >
+                            </div>
+                            <div class="demo-buttons">
+                                <button
+                                    type="button"
+                                    id="reload-demo"
+                                    data-i18n="reload"
+                                >
+                                    Reload
+                                </button>
+                                <button
+                                    type="button"
+                                    id="fullscreen-demo"
+                                    data-i18n="fullscreen"
+                                >
+                                    Fullscreen
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="demo-viewport" id="demo-viewport">
+                            <iframe
+                                id="demo-frame"
+                                src="demo/"
+                                title="Interactive LÖVE Window Kit demo"
+                                allow="fullscreen"
+                                allowfullscreen
+                                loading="eager"
+                            ></iframe>
+                        </div>
+
+                        <div class="demo-hints">
+                            <span
+                                ><kbd>Drag</kbd>
+                                <span data-i18n="hintWindow"
+                                    >title bar or content</span
+                                ></span
+                            >
+                            <span
+                                ><kbd>Wheel</kbd>
+                                <span data-i18n="hintScroll">scroll</span></span
+                            >
+                            <span
+                                ><kbd>Ctrl</kbd> + <kbd>Wheel</kbd>
+                                <span data-i18n="hintZoom"
+                                    >zoom at cursor</span
+                                ></span
+                            >
+                            <span
+                                ><kbd>↑↓←→</kbd>
+                                <span data-i18n="hintKeys"
+                                    >active window</span
+                                ></span
+                            >
+                        </div>
+                    </div>
+
+                    <p class="demo-note" data-i18n="demoNote">
+                        First launch downloads about 5 MB of WebAssembly. Later
+                        scenarios reuse the browser cache.
+                    </p>
+                </div>
+            </section>
+
+            <section class="features-section shell" id="features">
+                <div class="section-heading centered" data-reveal>
+                    <div>
+                        <p class="section-kicker" data-i18n="featuresKicker">
+                            Small surface, complete behavior
+                        </p>
+                        <h2 data-i18n="featuresTitle">
+                            The windowing pieces games actually need
+                        </h2>
+                    </div>
+                    <p data-i18n="featuresLead">
+                        Keep rendering in LÖVE. Let the kit handle coordinates,
+                        focus, capture and viewport state.
+                    </p>
+                </div>
+
+                <div class="feature-grid">
+                    <article class="feature-card" data-reveal>
+                        <span class="feature-icon">↕</span>
+                        <h3 data-i18n="featureScrollTitle">
+                            Scrolling that stays owned
+                        </h3>
+                        <p data-i18n="featureScrollText">
+                            Wheel, keyboard, content drag, scrollbar paging and
+                            touch are routed only to the focused viewport.
+                        </p>
+                    </article>
+                    <article class="feature-card" data-reveal>
+                        <span class="feature-icon">⌕</span>
+                        <h3 data-i18n="featureZoomTitle">
+                            Cursor-centered zoom
+                        </h3>
+                        <p data-i18n="featureZoomText">
+                            Zoom keeps the content point under the cursor stable
+                            and clamps cleanly at content boundaries.
+                        </p>
+                    </article>
+                    <article class="feature-card" data-reveal>
+                        <span class="feature-icon">▣</span>
+                        <h3 data-i18n="featureFloatTitle">Floating windows</h3>
+                        <p data-i18n="featureFloatText">
+                            Draggable title bars, responsive constraints, themed
+                            chrome and independent content spaces.
+                        </p>
+                    </article>
+                    <article class="feature-card" data-reveal>
+                        <span class="feature-icon">≋</span>
+                        <h3 data-i18n="featureStackTitle">Focus and layers</h3>
+                        <p data-i18n="featureStackText">
+                            Deterministic z-order, raise-on-focus and mouse or
+                            touch capture across overlapping windows.
+                        </p>
+                    </article>
+                    <article class="feature-card" data-reveal>
+                        <span class="feature-icon">◇</span>
+                        <h3 data-i18n="featureTouchTitle">
+                            Touch and high-DPI
+                        </h3>
+                        <p data-i18n="featureTouchText">
+                            Independent multi-touch ownership, orientation
+                            changes and consistent DPI coordinate handling.
+                        </p>
+                    </article>
+                    <article class="feature-card" data-reveal>
+                        <span class="feature-icon">↺</span>
+                        <h3 data-i18n="featureStateTitle">
+                            Serializable state
+                        </h3>
+                        <p data-i18n="featureStateText">
+                            Save and restore position, dimensions, scrolling and
+                            zoom with reasoned change callbacks.
+                        </p>
+                    </article>
+                </div>
+            </section>
+
+            <section class="examples-section" id="examples">
+                <div class="shell examples-layout">
+                    <div class="examples-copy" data-reveal>
+                        <p class="section-kicker" data-i18n="examplesKicker">
+                            Copyable, runnable modules
+                        </p>
+                        <h2 data-i18n="examplesTitle">
+                            Start with a scenario, then keep only what you need
+                        </h2>
+                        <p data-i18n="examplesLead">
+                            Each example is a regular Lua module with the full
+                            callback bridge. Run it locally or inspect the exact
+                            source from the site.
+                        </p>
+                        <a
+                            class="text-link"
+                            href="https://github.com/SMETAHA/love2d-window-kit/tree/main/examples"
+                            data-i18n="browseExamples"
+                            >Browse all example source →</a
+                        >
+                    </div>
+
+                    <div class="example-list" data-reveal>
+                        <a
+                            href="https://github.com/SMETAHA/love2d-window-kit/blob/main/examples/minimal.lua"
+                            ><span>01</span
+                            ><strong data-i18n="exampleMinimal"
+                                >Minimal integration</strong
+                            ><code>--minimal</code></a
+                        >
+                        <a
+                            href="https://github.com/SMETAHA/love2d-window-kit/blob/main/examples/floating_inventory.lua"
+                            ><span>02</span
+                            ><strong data-i18n="exampleInventory"
+                                >Floating inventory</strong
+                            ><code>floating-inventory</code></a
+                        >
+                        <a
+                            href="https://github.com/SMETAHA/love2d-window-kit/blob/main/examples/multi_window_dashboard.lua"
+                            ><span>03</span
+                            ><strong data-i18n="exampleDashboard"
+                                >Multi-window dashboard</strong
+                            ><code>multi-window-dashboard</code></a
+                        >
+                        <a
+                            href="https://github.com/SMETAHA/love2d-window-kit/blob/main/examples/large_map_culling.lua"
+                            ><span>04</span
+                            ><strong data-i18n="exampleCulling"
+                                >Large-map culling</strong
+                            ><code>large-map-culling</code></a
+                        >
+                        <a
+                            href="https://github.com/SMETAHA/love2d-window-kit/blob/main/examples/mobile_test.lua"
+                            ><span>05</span
+                            ><strong data-i18n="exampleMobile"
+                                >Mobile diagnostics</strong
+                            ><code>--mobile-test</code></a
+                        >
+                    </div>
+                </div>
+            </section>
+
+            <section class="cta-section shell" data-reveal>
+                <div class="cta-card">
+                    <div>
+                        <p class="section-kicker" data-i18n="ctaKicker">
+                            Ready for a new LÖVE project
+                        </p>
+                        <h2 data-i18n="ctaTitle">
+                            Clone it, run it, shape it into your own UI.
+                        </h2>
+                    </div>
+                    <div class="cta-actions">
+                        <a
+                            class="button button-primary"
+                            href="https://github.com/SMETAHA/love2d-window-kit/releases/latest"
+                            data-i18n="downloadRelease"
+                            >Download release</a
+                        >
+                        <a
+                            class="button button-secondary"
+                            href="https://github.com/SMETAHA/love2d-window-kit#quick-start"
+                            data-i18n="quickStart"
+                            >Quick start</a
+                        >
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="site-footer">
+            <div class="shell footer-inner">
+                <p>
+                    © <span id="year">2026</span> SMETAHA · LÖVE Window Kit ·
+                    MIT
+                </p>
+                <p>
+                    <span data-i18n="poweredBy">Browser build powered by</span>
+                    <a href="https://github.com/Davidobot/love.js">love.js</a>.
+                </p>
+            </div>
+        </footer>
+    </body>
+</html>

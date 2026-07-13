@@ -1,0 +1,85 @@
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  LOVEJS_REPOSITORY: https://github.com/Davidobot/love.js.git
+  LOVEJS_COMMIT: c4f04e185033a7c9fbefa9be3bec88c41a90421b
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Prepare love.js
+        run: |
+          git clone --filter=blob:none "$LOVEJS_REPOSITORY" "$RUNNER_TEMP/love.js"
+          git -C "$RUNNER_TEMP/love.js" checkout "$LOVEJS_COMMIT"
+          npm --prefix "$RUNNER_TEMP/love.js" ci --omit=dev
+
+      - name: Build browser demo
+        run: |
+          mkdir -p _site/demo
+          cp -R site/. _site/
+          zip -9 -r "$RUNNER_TEMP/window-kit-demo.love" . \
+            -x '.git/*' '.github/*' 'tests/*' 'scripts/*' \
+               'site/*' '_site/*' '*.zip' '*.love'
+          node "$RUNNER_TEMP/love.js/index.js" \
+            "$RUNNER_TEMP/window-kit-demo.love" \
+            "$RUNNER_TEMP/love-web" \
+            --compatibility \
+            --title "LÖVE Window Kit Demo"
+          cp "$RUNNER_TEMP/love-web/game.data" _site/demo/
+          cp "$RUNNER_TEMP/love-web/game.js" _site/demo/
+          cp "$RUNNER_TEMP/love-web/love.js" _site/demo/
+          cp "$RUNNER_TEMP/love-web/love.wasm" _site/demo/
+          cp "$RUNNER_TEMP/love.js/LICENSE" _site/demo/love.js.LICENSE.txt
+          touch _site/.nojekyll
+
+      - name: Verify site output
+        run: |
+          test -s _site/index.html
+          test -s _site/styles.css
+          test -s _site/app.js
+          test -s _site/demo/index.html
+          test -s _site/demo/game.data
+          test -s _site/demo/love.js
+          test -s _site/demo/love.wasm
+          node --check _site/app.js
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
