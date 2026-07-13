@@ -231,4 +231,69 @@ assert(capturedBackground.cancelled, "modal activation must cancel lower capture
 assert(captureStack:mousemoved(20, 10, 0, 0))
 assert(count(capturedBackground, "move") == 0)
 
+-- A non-focusable modal still owns the boundary and must cancel lower capture/focus.
+local passiveModalStack = WindowStack.new()
+local passiveBackground = newWindow("passive-background", 0, 200, false)
+local passiveDialog = newWindow("passive-dialog", 50, 100, true)
+local passiveCaptureLost = 0
+passiveModalStack:add(passiveBackground, {
+    layer = 0,
+    onCaptureLost = function() passiveCaptureLost = passiveCaptureLost + 1 end
+})
+passiveModalStack:add(passiveDialog, {
+    layer = 200,
+    modal = true,
+    visible = false,
+    focusable = false
+})
+assert(passiveModalStack:focus(passiveBackground))
+assert(passiveModalStack:mousepressed(20, 10, 1))
+assert(passiveModalStack:setVisible(passiveDialog, true))
+assert(passiveBackground.cancelled and passiveCaptureLost == 1)
+assert(passiveModalStack.mouseCaptureEntry == nil and passiveModalStack:getActive() == nil)
+assert(passiveModalStack:mousemoved(20, 10, 0, 0))
+assert(count(passiveBackground, "move") == 0)
+
+-- Moving an existing modal above a captured entry revalidates ownership.
+local reorderedModalStack = WindowStack.new()
+local lowDialog = newWindow("low-dialog", 300, 400, true)
+local formerlyAbove = newWindow("formerly-above", 0, 200, true)
+reorderedModalStack:add(lowDialog, { layer = 0, modal = true })
+reorderedModalStack:add(formerlyAbove, { layer = 100 })
+assert(reorderedModalStack:mousepressed(20, 10, 1))
+assert(reorderedModalStack:setLayer(lowDialog, 200))
+assert(formerlyAbove.cancelled and reorderedModalStack.mouseCaptureEntry == nil)
+assert(reorderedModalStack:mousemoved(20, 10, 0, 0))
+assert(count(formerlyAbove, "move") == 0)
+
+-- Restoring layers from state performs the same modal-boundary reconciliation.
+local restoredModalStack = WindowStack.new()
+local restoredDialog = newWindow("restored-dialog", 300, 400, true)
+local restoredForeground = newWindow("restored-foreground", 0, 200, true)
+restoredModalStack:add(restoredDialog, { id = "dialog", layer = 0, modal = true })
+restoredModalStack:add(restoredForeground, { id = "foreground", layer = 100 })
+assert(restoredModalStack:mousepressed(20, 10, 1))
+restoredModalStack:setState({
+    entries = {
+        { id = "foreground", layer = 100, visible = true, enabled = true },
+        { id = "dialog", layer = 200, visible = true, enabled = true,
+            focusable = true, modal = true }
+    },
+    active = "dialog"
+})
+assert(restoredForeground.cancelled and restoredModalStack.mouseCaptureEntry == nil)
+assert(restoredModalStack:getActive() == restoredDialog)
+
+-- A touch blocked at press remains consumed for its complete event sequence.
+local blockedTouchStack = WindowStack.new()
+local touchBackground = newWindow("touch-background", 0, 200, false)
+local touchDialog = newWindow("touch-dialog", 50, 100, true)
+blockedTouchStack:add(touchBackground, { layer = 0 })
+blockedTouchStack:add(touchDialog, { layer = 200, modal = true })
+assert(blockedTouchStack:touchpressed("blocked", 20, 10, 0, 0, 1))
+assert(blockedTouchStack:touchmoved("blocked", 25, 10, 5, 0, 1))
+assert(blockedTouchStack:touchreleased("blocked", 25, 10, 0, 0, 1))
+assert(not blockedTouchStack:touchreleased("blocked", 25, 10, 0, 0, 1))
+assert(count(touchBackground, "touch-press-blocked") == 0)
+
 print("WindowStack tests passed")

@@ -186,4 +186,71 @@ assert(not resizable:keypressed("unmapped"))
 resizable:setInputOptions({ horizontal = true })
 assert(resizable:keypressed("right"))
 
+-- Source switches disable the entire wheel/touch source, not only panning.
+mouseX, mouseY = 100, 100
+keysDown.lctrl = true
+local zoomBeforeDisabledWheel = resizable.zoom
+resizable.trackpadVelocityX, resizable.trackpadVelocityY = 10, 20
+resizable:setInputOptions({ wheel = false })
+assert(not resizable:wheelmoved(0, 1))
+assertApprox(resizable.zoom, zoomBeforeDisabledWheel, "disabled wheel zoom")
+assert(resizable.trackpadVelocityX == 0 and resizable.trackpadVelocityY == 0)
+resizable:setInputOptions({ wheel = true, touch = false })
+assert(not resizable:touchpressed("disabled-touch", 100, 100, 0, 0, 1))
+assert(not resizable.activeTouches or not resizable.activeTouches["disabled-touch"])
+keysDown.lctrl = false
+
+-- Disabling touchscreen pan alone still permits an explicitly enabled pinch.
+resizable:setInputOptions({ touch = true })
+resizable:setTouchOptions({ pan = false, pinchZoom = true })
+resizable:setZoom(1)
+resizable:scrollTo(100, 100)
+assert(resizable:touchpressed("no-pan-a", 100, 100, 0, 0, 1))
+assert(resizable:touchmoved("no-pan-a", 130, 100, 30, 0, 1))
+assertApprox(resizable.scrollX, 100, "disabled one-finger pan")
+assert(resizable:touchpressed("no-pan-b", 200, 100, 0, 0, 1))
+assert(resizable:touchmoved("no-pan-b", 300, 100, 100, 0, 1))
+assert(resizable.zoom > 1, "pinch must remain independent from one-finger pan")
+resizable:touchreleased("no-pan-a", 130, 100, 0, 0, 1)
+resizable:touchreleased("no-pan-b", 300, 100, 0, 0, 1)
+
+-- Exponential integration produces the same momentum across frame sizes.
+local inertiaCoarse, inertiaFine = newFloating(), newFloating()
+for _, candidate in ipairs({ inertiaCoarse, inertiaFine }) do
+    candidate:setInertia({ enabled = true, friction = 6, minVelocity = 0 })
+    candidate:scrollTo(100, 100)
+    candidate.velocityX, candidate.velocityY = 200, 100
+end
+inertiaCoarse:update(0.1)
+inertiaFine:update(0.05)
+inertiaFine:update(0.05)
+assertApprox(inertiaCoarse.scrollX, inertiaFine.scrollX, "frame-independent inertia X")
+assertApprox(inertiaCoarse.scrollY, inertiaFine.scrollY, "frame-independent inertia Y")
+assertApprox(inertiaCoarse.velocityX, inertiaFine.velocityX,
+    "frame-independent inertia velocity")
+local retainedVelocity = inertiaCoarse.velocityX
+inertiaCoarse:update(0)
+assertApprox(inertiaCoarse.velocityX, retainedVelocity, "zero dt must preserve inertia")
+
+local trackpadCoarse, trackpadFine = newFloating(), newFloating()
+for _, candidate in ipairs({ trackpadCoarse, trackpadFine }) do
+    candidate:setTrackpadOptions({ smooth = true, friction = 12 })
+    candidate:scrollTo(100, 100)
+    candidate.trackpadVelocityX, candidate.trackpadVelocityY = 300, 150
+end
+trackpadCoarse:update(0.1)
+trackpadFine:update(0.05)
+trackpadFine:update(0.05)
+assertApprox(trackpadCoarse.scrollX, trackpadFine.scrollX,
+    "frame-independent trackpad X")
+assertApprox(trackpadCoarse.trackpadVelocityX, trackpadFine.trackpadVelocityX,
+    "frame-independent trackpad velocity")
+
+-- An impossibly short host keeps a non-negative content viewport.
+local tiny = newFloating()
+assert(tiny:constrainToScreen(20, 10, true))
+local tinyViewportWidth, tinyViewportHeight = tiny:getViewportSize()
+assert(tiny.w == 20 and tiny.h == tiny.titleBarHeight + 1)
+assert(tinyViewportWidth == 20 and tinyViewportHeight == 1)
+
 print("WindowManager tests passed")

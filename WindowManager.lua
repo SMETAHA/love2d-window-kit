@@ -108,6 +108,7 @@ function WindowManager.new(options)
     -- Input policy
     self.wheelScroll = true
     self.keyboardScroll = true
+    self.touchInputEnabled = true
     self.touchScroll = true
     self.pinchToZoom = true
     self.horizontalScroll = true
@@ -573,7 +574,6 @@ function WindowManager:setInputOptions(options)
     local booleans = {
         wheel = "wheelScroll",
         keyboard = "keyboardScroll",
-        touch = "touchScroll",
         pinchZoom = "pinchToZoom",
         horizontal = "horizontalScroll",
         vertical = "verticalScroll",
@@ -581,6 +581,20 @@ function WindowManager:setInputOptions(options)
     }
     for optionName, fieldName in pairs(booleans) do
         if options[optionName] ~= nil then self[fieldName] = not not options[optionName] end
+    end
+    if options.wheel ~= nil and not self.wheelScroll then
+        self.trackpadVelocityX, self.trackpadVelocityY = 0, 0
+    end
+    if options.touch ~= nil then
+        self.touchInputEnabled = not not options.touch
+        if not self.touchInputEnabled then
+            local hadActiveTouches = next(self.activeTouches or {}) ~= nil
+            self.activeTouches = {}
+            self.pinch = nil
+            self.lastTap = nil
+            self.lastDragTime = nil
+            if hadActiveTouches then self.velocityX, self.velocityY = 0, 0 end
+        end
     end
 
     if options.zoomModifier ~= nil then
@@ -960,6 +974,8 @@ function WindowManager:_modifierDown(modifier)
 end
 
 function WindowManager:wheelmoved(wx, wy)
+    if not self.wheelScroll then return false end
+
     -- Check if mouse is inside this window
     local mx, my = love.mouse.getPosition()
     if not self:isPointInsideWindow(mx, my) then
@@ -983,7 +999,6 @@ function WindowManager:wheelmoved(wx, wy)
         end
         self:setZoom(targetZoom, mx, my, "wheel-zoom")
     else
-        if not self.wheelScroll then return false end
         self.navigation = nil
         self.velocityX, self.velocityY = 0, 0
         if self.shiftWheelHorizontal and self.zoomModifier ~= "shift"
@@ -1408,6 +1423,7 @@ function WindowManager:_updateTouchGestures()
 end
 
 function WindowManager:touchpressed(id, tx, ty, dx, dy, pressure)
+    if not self.touchInputEnabled then return false end
     if not self:isPointInsideWindow(tx, ty) then
         return false
     end
@@ -2111,15 +2127,24 @@ function WindowManager:_updateInertia(dt)
     if math.abs(self.velocityX) < self.inertiaMinVelocity then self.velocityX = 0 end
     if math.abs(self.velocityY) < self.inertiaMinVelocity then self.velocityY = 0 end
     if self.velocityX == 0 and self.velocityY == 0 then return false end
+    if dt == 0 then return false end
 
     local oldX, oldY, oldZoom = self:_snapshot()
-    local step = math.min(dt, 0.05)
-    self.scrollX = self.scrollX + self.velocityX * step
-    self.scrollY = self.scrollY + self.velocityY * step
+    local damping = math.exp(-self.inertiaFriction * dt)
+    local distanceScale = (1 - damping) / self.inertiaFriction
+    if self.horizontalScroll then
+        self.scrollX = self.scrollX + self.velocityX * distanceScale
+    else
+        self.velocityX = 0
+    end
+    if self.verticalScroll then
+        self.scrollY = self.scrollY + self.velocityY * distanceScale
+    else
+        self.velocityY = 0
+    end
     self:limitScroll()
     if changed(oldX, self.scrollX) == false then self.velocityX = 0 end
     if changed(oldY, self.scrollY) == false then self.velocityY = 0 end
-    local damping = math.exp(-self.inertiaFriction * step)
     self.velocityX, self.velocityY = self.velocityX * damping, self.velocityY * damping
     self:_showScrollbars()
     self:_emitChanges(oldX, oldY, oldZoom, "inertia")
@@ -2135,15 +2160,24 @@ function WindowManager:_updateTrackpad(dt)
     if math.abs(self.trackpadVelocityX) < 1 then self.trackpadVelocityX = 0 end
     if math.abs(self.trackpadVelocityY) < 1 then self.trackpadVelocityY = 0 end
     if self.trackpadVelocityX == 0 and self.trackpadVelocityY == 0 then return false end
+    if dt == 0 then return false end
 
     local oldX, oldY, oldZoom = self:_snapshot()
-    local step = math.min(dt, 0.05)
-    if self.horizontalScroll then self.scrollX = self.scrollX + self.trackpadVelocityX * step end
-    if self.verticalScroll then self.scrollY = self.scrollY + self.trackpadVelocityY * step end
+    local damping = math.exp(-self.trackpadFriction * dt)
+    local distanceScale = (1 - damping) / self.trackpadFriction
+    if self.horizontalScroll then
+        self.scrollX = self.scrollX + self.trackpadVelocityX * distanceScale
+    else
+        self.trackpadVelocityX = 0
+    end
+    if self.verticalScroll then
+        self.scrollY = self.scrollY + self.trackpadVelocityY * distanceScale
+    else
+        self.trackpadVelocityY = 0
+    end
     self:limitScroll()
     if not changed(oldX, self.scrollX) then self.trackpadVelocityX = 0 end
     if not changed(oldY, self.scrollY) then self.trackpadVelocityY = 0 end
-    local damping = math.exp(-self.trackpadFriction * step)
     self.trackpadVelocityX = self.trackpadVelocityX * damping
     self.trackpadVelocityY = self.trackpadVelocityY * damping
     self:_showScrollbars()
@@ -2211,7 +2245,8 @@ function WindowManager:constrainToScreen(screenWidth, screenHeight, shrink)
         self.w = math.min(self.preferredW, screenWidth)
         self.h = math.min(self.preferredH, screenHeight)
         self.w, self.h = self:_clampWindowSize(self.w, self.h)
-        self.w, self.h = math.min(self.w, screenWidth), math.min(self.h, screenHeight)
+        self.w = math.max(1, math.min(self.w, screenWidth))
+        self.h = math.max(self.titleBarHeight + 1, math.min(self.h, screenHeight))
         self.windowWidth, self.windowHeight = self.w, self.h
     end
     self.x = math.max(0, math.min(self.x, math.max(0, screenWidth - self.w)))

@@ -50,6 +50,10 @@ A color is `{r, g, b, a}` with components in the `0..1` range. `pageStep` is the
 | `trackpad` | — | Nested precision-trackpad options |
 | `touchscreen` | — | Nested touchscreen gesture options |
 
+`wheel`, `keyboard`, and `touch` disable the complete input source. Nested
+`touchscreen.pan` controls one-finger panning only; it does not disable pinch,
+tap, long press, or touch control of floating-window chrome.
+
 ### Precision trackpad options
 
 `smooth`, `sensitivity`, `invertX`, `invertY`, `friction`, `maxVelocity`, `zoomMode`, and `zoomSensitivity`.
@@ -166,7 +170,7 @@ stack:add(window, options)
 
 Forward mouse, wheel, touch, keyboard, `textinput`, and `textedited` callbacks to the stack. A mouse gesture stays with one window until release; each touch ID is captured independently. If native touch callbacks are forwarded, skip mouse events with `istouch == true`; LÖVE marks touch-originated mouse events this way and processing both paths would duplicate the gesture.
 
-Stack state contains only entries with stable IDs. If a managed window implements `getState` and `setState`, its own state is nested and restored automatically. Activating a modal entry cancels captures held below the modal boundary.
+Stack state contains only entries with stable IDs. If a managed window implements `getState` and `setState`, its own state is nested and restored automatically. Activating a modal entry, including a non-focusable one, or moving it across layers cancels captures held below the modal boundary. A touch blocked by a modal at `touchpressed` remains consumed through its matching `touchreleased`.
 
 ## SystemWindow
 
