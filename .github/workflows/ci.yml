@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lua-and-love:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.1 curl xvfb zip
+
+      - name: Run Lua unit and smoke tests
+        env:
+          LUA_BIN: lua5.1
+          LUAC_BIN: luac5.1
+        run: sh scripts/run_tests.sh
+
+      - name: Download and extract LÖVE 11.5
+        run: |
+          curl --fail --location --retry 3 \
+            --output /tmp/love.AppImage \
+            https://github.com/love2d/love/releases/download/11.5/love-11.5-x86_64.AppImage
+          chmod +x /tmp/love.AppImage
+          cd /tmp
+          /tmp/love.AppImage --appimage-extract >/dev/null
+
+      - name: Run real LÖVE smoke test
+        run: timeout 20s xvfb-run -a /tmp/squashfs-root/AppRun . --smoke
+
+      - name: Build distributable .love archive
+        run: |
+          zip -9 -r WindowManager-template.love . \
+            -x '.git/*' '.github/*' 'tests/*' 'scripts/*' '*.zip'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WindowManager-template
+          path: WindowManager-template.love

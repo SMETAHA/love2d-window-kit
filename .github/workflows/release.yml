@@ -1,0 +1,35 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version without the v prefix
+        required: true
+        default: 1.0.0
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify version
+        run: test "$(cat VERSION)" = "${{ inputs.version }}"
+
+      - name: Build .love archive
+        run: |
+          zip -9 -r "love2d-window-kit-${{ inputs.version }}.love" . \
+            -x '.git/*' '.github/*' 'tests/*' 'scripts/*' '*.zip' '*.love'
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${{ inputs.version }}" \
+            "love2d-window-kit-${{ inputs.version }}.love" \
+            --title "LÖVE Window Kit v${{ inputs.version }}" \
+            --generate-notes
